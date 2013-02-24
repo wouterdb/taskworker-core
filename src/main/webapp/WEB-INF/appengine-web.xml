@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<appengine-web-app xmlns="http://appengine.google.com/ns/1.0" schemaLocation="https://googleappengine.googlecode.com/svn-history/r58/trunk/java/docs/appengine-web.xsd">
+  <application>gaebuilder-java</application>
+  <version>1</version>
+  <!-- TODO review code for thread-safety. -->
+  <threadsafe>false</threadsafe>
+  <static-files />
+  <resource-files />
+</appengine-web-app>

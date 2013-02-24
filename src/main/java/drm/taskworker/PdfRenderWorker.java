@@ -16,7 +16,7 @@
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
-package drm.pdf;
+package drm.taskworker;
 
 import java.io.DataInputStream;
 import java.io.File;

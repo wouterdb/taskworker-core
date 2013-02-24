@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.pdf;
+package drm.taskworker;
 
 import java.io.Serializable;
 import java.util.HashMap;

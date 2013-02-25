@@ -29,16 +29,23 @@ import java.util.List;
  *
  */
 public class TaskResult {
-	enum Result {SUCCESS, ERROR};
+	enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};
 	
 	private Result result = null;
 	private List<Task> tasks = null;
+	private Exception exception = null;
 
+	/**
+	 * Initialize a new taskresult
+	 */
 	public TaskResult() {
 		this.tasks = new ArrayList<Task>();
 	}
 	
 	/**
+	 * Get the result of this task. When the result is exception, the exception
+	 * causing this result can be retrieved using getException()
+	 * 
 	 * @return the result
 	 */
 	public Result getResult() {
@@ -46,6 +53,9 @@ public class TaskResult {
 	}
 
 	/**
+	 * Set the result. When the result is EXCEPTION, also set the exception
+	 * that caused this result.
+	 * 
 	 * @param result the result to set
 	 */
 	public TaskResult setResult(Result result) {
@@ -53,6 +63,11 @@ public class TaskResult {
 		return this;
 	}
 	
+	/**
+	 * Add a next task in this workflow.
+	 * 
+	 * @param task
+	 */
 	public void addNextTask(Task task) {
 		System.err.println("new task for " + task.getWorker());
 		this.tasks.add(task);
@@ -65,7 +80,26 @@ public class TaskResult {
 		return this.tasks.size() > 1;
 	}
 	
+	/**
+	 * Get a list of all the next tasks
+	 * 
+	 * @return A list of tasks that are the result of this task
+	 */
 	public List<Task> getNextTasks() {
 		return this.tasks;
+	}
+
+	/**
+	 * @return the exception
+	 */
+	public Exception getException() {
+		return exception;
+	}
+
+	/**
+	 * @param exception the exception to set
+	 */
+	public void setException(Exception exception) {
+		this.exception = exception;
 	}
 }

@@ -74,4 +74,10 @@ public class PdfRenderWorker extends Worker {
 		}
 		return result;
 	}
+
+	@Override
+	public TaskResult work(EndTask task) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

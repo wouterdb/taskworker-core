@@ -20,17 +20,15 @@
 package drm.taskworker;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
 import com.google.appengine.api.taskqueue.TaskHandle;
-import com.google.appengine.api.taskqueue.TaskOptions;
 
 /**
  * A work class that fetches work from a pull queue
@@ -39,6 +37,8 @@ import com.google.appengine.api.taskqueue.TaskOptions;
  * 
  */
 public abstract class Worker implements Runnable {
+	protected static final Logger logger = Logger.getLogger(Worker.class.getCanonicalName()); 
+	
 	private String name = null;
 	private boolean working = true;
 
@@ -53,16 +53,28 @@ public abstract class Worker implements Runnable {
 	}
 
 	/**
-	 * 
+	 * Do the work for the given task.
 	 */
 	public abstract TaskResult work(Task task);
 	
+	/**
+	 * Signal the end of the workflow.
+	 */
+	public abstract TaskResult work(EndTask task);
+	
+	/**
+	 * Stop working so the thread ends clean
+	 */
 	public void stopWorking() {
 		this.working = false;
 	}
 
+	/**
+	 * The main loop that handles the tasks.
+	 */
 	@Override
 	public void run() {
+		logger.info("Started worker " + this.toString());
 		while (this.working) {
 			try {
 				Queue q = QueueFactory.getQueue("pull-queue");
@@ -70,37 +82,21 @@ public abstract class Worker implements Runnable {
 				List<TaskHandle> tasks = q.leaseTasksByTag(1000, TimeUnit.SECONDS, 1, this.name);
 
 				if (!tasks.isEmpty()) {
-				    System.out.println("Fetched task for " + this.name);
 					TaskHandle handle = tasks.get(0);
+					logger.info("Fetched task for " + this.name + " with id " + handle.getName());
 
 					ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(handle.getPayload()));
 					Task task = (Task)ois.readObject();
 					ois.close();
 					
 					TaskResult result = this.work(task);
-					System.out.println("Work done");
 					
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						for (Task newTask : result.getNextTasks()) {
-							System.out.println("New task for " + newTask.getWorker() + " on worker " + this.name);
-							ByteArrayOutputStream bos = new ByteArrayOutputStream();
-							ObjectOutputStream oos = new ObjectOutputStream(bos);
-							oos.writeObject(newTask);
-							
-						    TaskOptions to = TaskOptions.Builder.withMethod(TaskOptions.Method.PULL);
-							to.payload(bos.toByteArray());
-							
-							oos.close();
-							bos.close();
-							
-							to.tag(newTask.getWorker());
-						    
-							System.out.println("Added new task for " + newTask.getWorker());
-						    q.add(to);
+							TaskHandle newTH = q.add(newTask.toTaskOption());
+							logger.info("New task for " + newTask.getWorker() + " on worker " + this.name + " added with id " + newTH.getName());
 						}
 					}
-					
-					System.out.println("Deleted task from queue");
 					q.deleteTask(handle);
 				}
 

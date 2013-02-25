@@ -19,10 +19,15 @@
 
 package drm.taskworker;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.appengine.api.taskqueue.TaskOptions;
 
 /**
  * A task that needs to be executed by a worker
@@ -81,5 +86,25 @@ public class Task implements Serializable {
 	
 	public Set<String> getParamNames() {
 		return this.params.keySet();
+	}
+	
+	/**
+	 * Convert this task to a taskoption object.
+	 * @return
+	 */
+	public TaskOptions toTaskOption() throws IOException {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ObjectOutputStream oos = new ObjectOutputStream(bos);
+		oos.writeObject(this);
+		
+	    TaskOptions to = TaskOptions.Builder.withMethod(TaskOptions.Method.PULL);
+		to.payload(bos.toByteArray());
+		
+		oos.close();
+		bos.close();
+		
+		to.tag(this.getWorker());
+		
+		return to;
 	}
 }

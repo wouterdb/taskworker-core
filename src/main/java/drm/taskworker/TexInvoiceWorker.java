@@ -43,7 +43,7 @@ public class TexInvoiceWorker extends Worker {
 			VelocityEngine ve = new VelocityEngine();
             ve.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
             ve.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
-
+            ve.setProperty("runtime.log.logsystem.class", "org.apache.velocity.runtime.log.NullLogSystem");
             ve.init();
 
             final String templatePath = "invoice.vm";
@@ -78,5 +78,13 @@ public class TexInvoiceWorker extends Worker {
 		
 		return result;
 	}
+
+	@Override
+	public TaskResult work(EndTask task) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	
 
 }

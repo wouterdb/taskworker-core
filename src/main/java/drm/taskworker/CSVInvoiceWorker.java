@@ -25,11 +25,17 @@ import java.util.List;
 
 import au.com.bytecode.opencsv.CSVReader;
 
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
+
 /**
  * @author bart
  *
  */
 public class CSVInvoiceWorker extends Worker {
+	public static final String NEXT_TASK = "tex-invoice";
+	
+	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
 
 	public CSVInvoiceWorker() {
 		super("csv-invoice");
@@ -38,26 +44,21 @@ public class CSVInvoiceWorker extends Worker {
 	@Override
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
-		if (!task.hasParam("csv-input")) {
-			return result.setResult(TaskResult.Result.ERROR);
+		if (!task.hasParam("cacheKey")) {
+			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 		
-		System.out.println("Getting csv data");
-		String csv_data = (String) task.getParam("csv-input");
-		System.err.println(csv_data);
+		String csv_data = (String)cacheService.get(task.getParam("cacheKey"));
 		
 		// read in the csv
 		try {
-			System.out.println("Parsing csv data");
 			CSVReader parser = new CSVReader(new StringReader(csv_data), ';');
 			List<String[]> rows = parser.readAll();
 			String[] headers = rows.get(0);
 			
-			System.out.println("Generating invoice tasks: " + rows.size());
 			for (int i = 1; i < rows.size(); i++) {
-				System.out.println(" invoice " + i);
 				String[] row = rows.get(i);
-				Task newTask = new Task("tex-invoice");
+				Task newTask = new Task(NEXT_TASK);
 
 				for (int j = 0; j < row.length; j++) {
 					newTask.addParam(headers[j], row[j]);
@@ -69,14 +70,22 @@ public class CSVInvoiceWorker extends Worker {
 			
 			result.setResult(TaskResult.Result.SUCCESS);
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			result.setResult(TaskResult.Result.EXCEPTION);
+			result.setException(e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			result.setResult(TaskResult.Result.EXCEPTION);
+			result.setException(e);
 		}
 		
 		return result;
+	}
+
+	@Override
+	public TaskResult work(EndTask task) {
+		TaskResult result = new TaskResult();
+		result.addNextTask(new EndTask(NEXT_TASK));
+		
+		return result.setResult(TaskResult.Result.SUCCESS);
 	}
 
 }

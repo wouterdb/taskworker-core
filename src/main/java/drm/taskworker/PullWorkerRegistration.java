@@ -46,6 +46,7 @@ public class PullWorkerRegistration implements ServletContextListener {
 	}
 
 	public void contextInitialized(ServletContextEvent event) {
+		this.addWorker(new BlobWorker());
 		this.addWorker(new PdfRenderWorker());
 		this.addWorker(new CSVInvoiceWorker());
 		this.addWorker(new TexInvoiceWorker());

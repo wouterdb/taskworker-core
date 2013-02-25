@@ -64,6 +64,7 @@ public class StartWorkflowServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Map<String, List<BlobKey>> blobKeys = blobstoreService.getUploads(request);
         
+        Queue q = QueueFactory.getQueue("pull-queue");
         if (blobKeys.containsKey("file")) {
         	List<BlobKey> keys = blobKeys.get("file");
         	
@@ -72,9 +73,12 @@ public class StartWorkflowServlet extends HttpServlet {
 		        Task task = new Task("blob-to-cache");
 		        task.addParam("blob", key);
 		        
-				Queue q = QueueFactory.getQueue("pull-queue");
 			    q.add(task.toTaskOption());
         	}
+        	
+        	// send end of workflow
+        	EndTask endTask = new EndTask("blob-to-cache");
+        	q.add(endTask.toTaskOption());
         }
 	    
         response.sendRedirect("/index.jsp");

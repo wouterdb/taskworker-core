@@ -78,16 +78,16 @@ public abstract class Worker implements Runnable {
 		while (this.working) {
 			try {
 				Queue q = QueueFactory.getQueue("pull-queue");
-				// get one task
-				List<TaskHandle> tasks = q.leaseTasksByTag(1000, TimeUnit.SECONDS, 1, this.name);
+				List<TaskHandle> tasks = q.leaseTasksByTag(10, TimeUnit.SECONDS, 1, this.name);
 
 				if (!tasks.isEmpty()) {
 					TaskHandle handle = tasks.get(0);
-					logger.info("Fetched task for " + this.name + " with id " + handle.getName());
 
 					ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(handle.getPayload()));
 					Task task = (Task)ois.readObject();
 					ois.close();
+					
+					logger.info("Fetched task " + task.toString() + " for " + this.name + " with id " + handle.getName());
 					
 					TaskResult result = this.work(task);
 					
@@ -100,7 +100,7 @@ public abstract class Worker implements Runnable {
 					q.deleteTask(handle);
 				}
 
-				Thread.sleep(100);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (IOException e) {

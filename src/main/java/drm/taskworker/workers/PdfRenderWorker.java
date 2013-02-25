@@ -16,13 +16,18 @@
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
-package drm.taskworker;
+package drm.taskworker.workers;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+
+import drm.taskworker.EndTask;
+import drm.taskworker.Task;
+import drm.taskworker.TaskResult;
+import drm.taskworker.Worker;
 
 public class PdfRenderWorker extends Worker {
 	public PdfRenderWorker() {
@@ -63,9 +68,9 @@ public class PdfRenderWorker extends Worker {
 			File auxFile = new File(prefix + ".aux");
 			auxFile.delete();
 			
-			Task newTask = new Task("zip-files");
-			newTask.addParam("file", fileData);
-			result.addNextTask(newTask);
+//			Task newTask = new Task("zip-files");
+//			newTask.addParam("file", fileData);
+//			result.addNextTask(newTask);
 			result.setResult(TaskResult.Result.SUCCESS);
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -27,6 +27,11 @@ import javax.servlet.ServletContextListener;
 
 import com.google.appengine.api.ThreadManager;
 
+import drm.taskworker.workers.BlobWorker;
+import drm.taskworker.workers.CSVInvoiceWorker;
+import drm.taskworker.workers.PdfRenderWorker;
+import drm.taskworker.workers.TexInvoiceWorker;
+
 /**
  * This class starts pull workers for processing tasks from pull queues
  * 

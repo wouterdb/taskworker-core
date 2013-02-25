@@ -29,7 +29,7 @@ import java.util.List;
  *
  */
 public class TaskResult {
-	enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};
+	public enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};
 	
 	private Result result = null;
 	private List<Task> tasks = null;
@@ -69,7 +69,6 @@ public class TaskResult {
 	 * @param task
 	 */
 	public void addNextTask(Task task) {
-		System.err.println("new task for " + task.getWorker());
 		this.tasks.add(task);
 	}
 	

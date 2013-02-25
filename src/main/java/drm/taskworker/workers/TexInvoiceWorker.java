@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker;
+package drm.taskworker.workers;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +28,11 @@ import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
+
+import drm.taskworker.EndTask;
+import drm.taskworker.Task;
+import drm.taskworker.TaskResult;
+import drm.taskworker.Worker;
 
 public class TexInvoiceWorker extends Worker {
 

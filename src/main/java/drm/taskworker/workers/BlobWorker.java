@@ -1,10 +1,15 @@
-package drm.taskworker;
+package drm.taskworker.workers;
 
 import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
+
+import drm.taskworker.EndTask;
+import drm.taskworker.Task;
+import drm.taskworker.TaskResult;
+import drm.taskworker.Worker;
 
 /**
  * Retrieves a blob from the blobstore and puts it in the cache service.
@@ -71,6 +76,8 @@ public class BlobWorker extends Worker {
 	 * Handle the end of workflow token by sending it to the same next hop.
 	 */
 	public TaskResult work(EndTask task) {
+		logger.info("Ending workflow");
+		
 		TaskResult result = new TaskResult();
 		result.addNextTask(new EndTask(NEXT_TASK));
 

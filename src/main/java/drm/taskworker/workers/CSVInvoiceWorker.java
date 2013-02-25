@@ -16,7 +16,7 @@
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
-package drm.taskworker;
+package drm.taskworker.workers;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,6 +27,11 @@ import au.com.bytecode.opencsv.CSVReader;
 
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
+
+import drm.taskworker.EndTask;
+import drm.taskworker.Task;
+import drm.taskworker.TaskResult;
+import drm.taskworker.Worker;
 
 /**
  * @author bart

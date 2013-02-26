@@ -17,7 +17,8 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker;
+package drm.taskworker.tasks;
+
 
 
 /**
@@ -29,10 +30,11 @@ public class EndTask extends AbstractTask {
 	/**
 	 * Signal the end of a workflow to the next step in the workflow 
 	 * 
-	 * @param nextStepName The name of the next step.
+	 * @param parent The parent of this task
+	 * @param worker The name of the worker
 	 */
-	public EndTask(String nextStepName) {
-		super(nextStepName);
+	public EndTask(AbstractTask parent, String worker) {
+		super(parent.getWorkflow(), parent, worker);
 	}
 
 	@Override

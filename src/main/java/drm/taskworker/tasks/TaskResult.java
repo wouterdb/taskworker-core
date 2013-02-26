@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker;
+package drm.taskworker.tasks;
 
 import java.util.ArrayList;
 import java.util.List;

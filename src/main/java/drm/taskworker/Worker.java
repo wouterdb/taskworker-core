@@ -30,6 +30,11 @@ import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
 import com.google.appengine.api.taskqueue.TaskHandle;
 
+import drm.taskworker.tasks.AbstractTask;
+import drm.taskworker.tasks.EndTask;
+import drm.taskworker.tasks.Task;
+import drm.taskworker.tasks.TaskResult;
+
 /**
  * A work class that fetches work from a pull queue
  * 
@@ -37,11 +42,11 @@ import com.google.appengine.api.taskqueue.TaskHandle;
  * 
  */
 public abstract class Worker implements Runnable {
-	protected static final Logger logger = Logger.getLogger(Worker.class
-			.getCanonicalName());
+	protected static final Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
 
 	private String name = null;
 	private boolean working = true;
+	private String nextWorker = "next";
 
 	/**
 	 * Create a new work with a name
@@ -51,17 +56,36 @@ public abstract class Worker implements Runnable {
 	 */
 	public Worker(String name) {
 		this.name = name;
+		logger.info("Worker started with name " + this.name);
 	}
-
+	
+	/**
+	 * Get the name of the next worker
+	 */
+	public String getNextWorker() {
+		return this.nextWorker;
+	}
+	
+	/**
+	 * Set the name of the next worker
+	 */
+	protected void setNextWorker(String name) {
+		this.nextWorker = name;
+	}
+	
 	/**
 	 * Do the work for the given task.
 	 */
 	public abstract TaskResult work(Task task);
 
 	/**
-	 * Signal the end of the workflow.
+	 * Handle the end of workflow token by sending it to the next hop.
 	 */
-	public abstract TaskResult work(EndTask task);
+	public TaskResult work(EndTask task) {
+		TaskResult result = new TaskResult();
+		result.addNextTask(new EndTask(task, this.getNextWorker()));
+		return result.setResult(TaskResult.Result.SUCCESS);
+	}
 
 	/**
 	 * Stop working so the thread ends clean
@@ -105,8 +129,7 @@ public abstract class Worker implements Runnable {
 					} else if (task.getTaskType() == "end") {
 						result = this.work((EndTask) task);
 					} else {
-						logger.warning("Task type " + task.getTaskType()
-								+ " not known.");
+						logger.warning("Task type " + task.getTaskType() + " not known.");
 						continue;
 					}
 
@@ -117,7 +140,7 @@ public abstract class Worker implements Runnable {
 
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						for (AbstractTask newTask : result.getNextTasks()) {
-							newTask.setWorkFlowId(task.getWorkflowId());
+							
 							TaskHandle newTH = q.add(newTask.toTaskOption());
 							
 							logger.info("New task for " + newTask.getWorker()

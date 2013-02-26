@@ -38,10 +38,9 @@ import org.apache.fop.apps.MimeConstants;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
-import drm.taskworker.EndTask;
-import drm.taskworker.Task;
-import drm.taskworker.TaskResult;
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.Task;
+import drm.taskworker.tasks.TaskResult;
 
 /**
  * A worker that renders an invoice based
@@ -49,24 +48,20 @@ import drm.taskworker.Worker;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class XslFoRenderWorker extends Worker {
-	public static final String NEXT_TASK = "zip-files";
-	public static final String WORKER_NAME = "xsl-fo-render";
+	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
 
-	private MemcacheService cacheService = MemcacheServiceFactory
-			.getMemcacheService();
-
-	public XslFoRenderWorker() {
-		super(WORKER_NAME);
+	public XslFoRenderWorker(String workerName) {
+		super(workerName);
 	}
 
 	@Override
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
-		if (!task.hasParam("xslfo-source")) {
+		if (!task.hasParam("arg0")) {
 			return result.setResult(TaskResult.Result.ERROR);
 		}
 
-		String invoice_source = (String) task.getParam("xslfo-source");
+		String invoice_source = (String) task.getParam("arg0");
 
 		try {
 			TransformerFactory tFactory = TransformerFactory.newInstance();
@@ -98,8 +93,8 @@ public class XslFoRenderWorker extends Worker {
 			String cacheKey = UUID.randomUUID().toString();
 			this.cacheService.put(cacheKey, boas.toByteArray());
 
-			Task newTask = new Task(NEXT_TASK);
-			newTask.addParam("file", cacheKey);
+			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+			newTask.addParam("arg0", cacheKey);
 			result.addNextTask(newTask);
 			result.setResult(TaskResult.Result.SUCCESS);
 		} catch (Exception e) {
@@ -108,13 +103,4 @@ public class XslFoRenderWorker extends Worker {
 		}
 		return result;
 	}
-
-	@Override
-	public TaskResult work(EndTask task) {
-		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(NEXT_TASK));
-
-		return result.setResult(TaskResult.Result.SUCCESS);
-	}
-
 }

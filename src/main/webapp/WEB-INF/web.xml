@@ -6,16 +6,16 @@
 	version="2.5">
 	
 	<listener>
-		<listener-class>drm.taskworker.PullWorkerRegistration</listener-class>
+		<listener-class>drm.taskworker.WorkerRegistration</listener-class>
 	</listener>
 	
 	<servlet>
 		<servlet-name>start</servlet-name>
-		<servlet-class>drm.taskworker.StartWorkflowServlet</servlet-class>
+		<servlet-class>drm.demo.StartWorkflowServlet</servlet-class>
 	</servlet>
 	<servlet>
 	   <servlet-name>download</servlet-name>
-	   <servlet-class>drm.taskworker.DownloadServlet</servlet-class>
+	   <servlet-class>drm.demo.DownloadServlet</servlet-class>
 	</servlet>
 
 	<servlet-mapping>

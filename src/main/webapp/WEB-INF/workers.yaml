@@ -1,0 +1,16 @@
+---
+workers:
+    - {blob-to-cache: drm.taskworker.workers.BlobWorker}
+    - {csv-to-task: drm.taskworker.workers.CSVtoTaskWorker}
+    - {template-to-xml: drm.taskworker.workers.TemplateWorker}
+    - {xsl-fo-render: drm.taskworker.workers.XslFoRenderWorker}
+    - {zip-files: drm.taskworker.workers.ZipWorker}
+
+workflows:
+    invoices:
+        steps:
+            blob-to-cache: {next: csv-to-task}
+            csv-to-task: {next: template-to-xml}
+            template-to-xml: {next: xsl-fo-render}
+            xsl-fo-render: {next: zip-files}
+        start: blob-to-cache

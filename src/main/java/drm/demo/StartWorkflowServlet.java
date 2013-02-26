@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
  */
 
-package drm.taskworker;
+package drm.demo;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,8 +31,9 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
-import com.google.appengine.api.taskqueue.Queue;
-import com.google.appengine.api.taskqueue.QueueFactory;
+
+import drm.taskworker.Workflow;
+import drm.taskworker.tasks.StartTask;
 
 /**
  * Servlet implementation class StartWorkflowServlet
@@ -68,7 +69,6 @@ public class StartWorkflowServlet extends HttpServlet {
 		Map<String, List<BlobKey>> blobKeys = 
 				blobstoreService.getUploads(request);
 
-		Queue q = QueueFactory.getQueue("pull-queue");
 		String id = "";
 		if (blobKeys.containsKey("file")) {
 			List<BlobKey> keys = blobKeys.get("file");
@@ -79,18 +79,14 @@ public class StartWorkflowServlet extends HttpServlet {
 			}
 
 			BlobKey key = keys.get(0);
+			
+			Workflow workflow = new Workflow("invoices");
 
-			// create a workflow task
-			Task task = new StartTask("blob-to-cache");
-			task.addParam("blob", key);
-			q.add(task.toTaskOption());
-
-			// send end of workflow as the last task
-			EndTask endTask = new EndTask(task.getWorker());
-			endTask.setWorkFlowId(task.getWorkflowId());
-			q.add(endTask.toTaskOption());
-
-			id = task.getWorkflowId().toString();
+			StartTask task = workflow.newStartTask();
+			task.addParam("arg0", key);
+			
+			workflow.startNewWorkflow(task);
+			id = workflow.getWorkflowId().toString();
 		}
 
 		response.sendRedirect("/invoices.jsp?id=workflow-" + id);

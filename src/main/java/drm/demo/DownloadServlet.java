@@ -1,4 +1,4 @@
-package drm.taskworker;
+package drm.demo;
 
 import java.io.IOException;
 
@@ -15,8 +15,7 @@ import com.google.appengine.api.memcache.MemcacheServiceFactory;
  * Servlet implementation class DownloadServlet
  */
 public class DownloadServlet extends HttpServlet {
-	private MemcacheService memcacheService = MemcacheServiceFactory
-			.getMemcacheService();
+	private MemcacheService memcacheService = MemcacheServiceFactory.getMemcacheService();
 
 	/**
 	 * @see HttpServlet#HttpServlet()

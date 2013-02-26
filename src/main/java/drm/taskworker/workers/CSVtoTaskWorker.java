@@ -28,32 +28,31 @@ import au.com.bytecode.opencsv.CSVReader;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
-import drm.taskworker.EndTask;
-import drm.taskworker.Task;
-import drm.taskworker.TaskResult;
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.Task;
+import drm.taskworker.tasks.TaskResult;
 
 /**
- * @author bart
- *
+ * A worker that takes a csv file as input and generates a new task for each 
+ * row. Each record in a row is added as a parameter to a task.
+ * 
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class CSVInvoiceWorker extends Worker {
-	public static final String NEXT_TASK = "template-invoice";
-	
+public class CSVtoTaskWorker extends Worker {
 	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
 
-	public CSVInvoiceWorker() {
-		super("csv-invoice");
+	public CSVtoTaskWorker(String workerName) {
+		super(workerName);
 	}
 
 	@Override
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
-		if (!task.hasParam("cacheKey")) {
+		if (!task.hasParam("arg0")) {
 			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 		
-		String csv_data = (String)cacheService.get(task.getParam("cacheKey"));
+		String csv_data = (String)cacheService.get(task.getParam("arg0"));
 		
 		// read in the csv
 		try {
@@ -63,7 +62,7 @@ public class CSVInvoiceWorker extends Worker {
 			
 			for (int i = 1; i < rows.size(); i++) {
 				String[] row = rows.get(i);
-				Task newTask = new Task(NEXT_TASK);
+				Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
 
 				for (int j = 0; j < row.length; j++) {
 					newTask.addParam(headers[j], row[j]);
@@ -84,13 +83,4 @@ public class CSVInvoiceWorker extends Worker {
 		
 		return result;
 	}
-
-	@Override
-	public TaskResult work(EndTask task) {
-		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(NEXT_TASK));
-		
-		return result.setResult(TaskResult.Result.SUCCESS);
-	}
-
 }

@@ -29,16 +29,18 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 
-import drm.taskworker.EndTask;
-import drm.taskworker.Task;
-import drm.taskworker.TaskResult;
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.Task;
+import drm.taskworker.tasks.TaskResult;
 
+/**
+ * A worker that renders a template
+ *
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
+ */
 public class TemplateWorker extends Worker {
-	public static final String NEXT_TASK = "xsl-fo-render";
-
-	public TemplateWorker() {
-		super("template-invoice");
+	public TemplateWorker(String workerName) {
+		super(workerName);
 	}
 
 	@Override
@@ -70,8 +72,8 @@ public class TemplateWorker extends Worker {
 			template.merge(context, writer);
 			writer.flush();
 	
-			Task newTask = new Task(NEXT_TASK);
-			newTask.addParam("xslfo-source", writer.toString());
+			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+			newTask.addParam("arg0", writer.toString());
 			result.addNextTask(newTask);
 			
 			result.setResult(TaskResult.Result.SUCCESS);
@@ -83,15 +85,4 @@ public class TemplateWorker extends Worker {
 		
 		return result;
 	}
-
-	@Override
-	public TaskResult work(EndTask task) {
-		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(NEXT_TASK));
-		
-		return result.setResult(TaskResult.Result.SUCCESS);
-	}
-	
-	
-
 }

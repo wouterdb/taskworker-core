@@ -17,11 +17,13 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker;
+package drm.taskworker.tasks;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import drm.taskworker.Workflow;
 
 /**
  * A task that needs to be executed by a worker
@@ -36,10 +38,21 @@ public class Task extends AbstractTask {
 	/**
 	 * Create a task for a worker
 	 * 
+	 * @param parent The parent of this task
 	 * @param worker The name of the worker
 	 */
-	public Task(String worker) {
-		super(worker);
+	public Task(AbstractTask parent, String worker) {
+		super(parent.getWorkflow(), parent, worker);
+	}
+	
+	/**
+	 * Create a task for a worker
+	 * 
+	 * @param parent The parent of this task
+	 * @param worker The name of the worker
+	 */
+	protected Task(Workflow workflow, AbstractTask parent, String worker) {
+		super(workflow, parent, worker);
 	}
 	
 	/**

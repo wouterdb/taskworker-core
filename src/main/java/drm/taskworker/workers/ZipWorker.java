@@ -20,9 +20,7 @@
 package drm.taskworker.workers;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,10 +30,10 @@ import java.util.zip.ZipOutputStream;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
-import drm.taskworker.EndTask;
-import drm.taskworker.Task;
-import drm.taskworker.TaskResult;
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.EndTask;
+import drm.taskworker.tasks.Task;
+import drm.taskworker.tasks.TaskResult;
 
 /**
  * Collect all files in a workflow and zip them when an end of workflow task
@@ -44,17 +42,13 @@ import drm.taskworker.Worker;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class ZipWorker extends Worker {
-	public static final String NEXT_TASK = "csv-invoice";
-	public static final String WORKER_NAME = "zip-files";
-
-	private MemcacheService cacheService = MemcacheServiceFactory
-			.getMemcacheService();
+	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
 
 	/**
 	 * Creates a new work with the name blob-to-cache
 	 */
-	public ZipWorker() {
-		super(WORKER_NAME);
+	public ZipWorker(String workerName) {
+		super(workerName);
 	}
 
 	/**
@@ -66,13 +60,13 @@ public class ZipWorker extends Worker {
 	@Override
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
-		if (!task.hasParam("file")) {
+		if (!task.hasParam("arg0")) {
 			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 
 		// get the list of files to put in the zip, if it does not exist yet
 		// create it.
-		String zipKey = "workflow-files-" + task.getWorkflowId().toString();
+		String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId().toString();
 		List<byte[]> zipList = null;
 		if (this.cacheService.contains(zipKey)) {
 			zipList = (List<byte[]>)this.cacheService.get(zipKey);
@@ -81,15 +75,14 @@ public class ZipWorker extends Worker {
 		}
 		
 		// get the file that is sent to this worker
-		logger.warning("Retrieving pdf from " + task.getParam("file"));
-		byte[] fileData = (byte[])this.cacheService.get(task.getParam("file"));
+		byte[] fileData = (byte[])this.cacheService.get(task.getParam("arg0"));
 		zipList.add(fileData);
 		
 		// save the list again
 		this.cacheService.put(zipKey, zipList);
 		
 		// delete the file from the cache
-		this.cacheService.delete(task.getParam("file"));
+		this.cacheService.delete(task.getParam("arg0"));
 
 		result.setResult(TaskResult.Result.SUCCESS);
 		return result;
@@ -105,7 +98,7 @@ public class ZipWorker extends Worker {
 		
 		try {
 			// get all zip files
-			String zipKey = "workflow-files-" + task.getWorkflowId().toString();
+			String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId().toString();
 			List<byte[]> zipList = null;
 			if (!this.cacheService.contains(zipKey)) {
 				logger.warning("empty zip file");
@@ -130,7 +123,7 @@ public class ZipWorker extends Worker {
 			byte[] zipData = boas.toByteArray();
 			boas.close();
 			
-			this.cacheService.put("workflow-" + task.getWorkflowId().toString(), zipData);
+			this.cacheService.put("workflow-" + task.getWorkflow().getWorkflowId().toString(), zipData);
 			logger.info("Stored zip file in cache under " + zipKey);
 		} catch (FileNotFoundException e) {
 			result.setResult(TaskResult.Result.EXCEPTION);
@@ -142,5 +135,4 @@ public class ZipWorker extends Worker {
 
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}
-
 }

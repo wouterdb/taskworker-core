@@ -19,6 +19,7 @@
 
 package drm.taskworker;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,21 +28,17 @@ import javax.servlet.ServletContextListener;
 
 import com.google.appengine.api.ThreadManager;
 
-import drm.taskworker.workers.BlobWorker;
-import drm.taskworker.workers.CSVInvoiceWorker;
-import drm.taskworker.workers.TemplateWorker;
-import drm.taskworker.workers.XslFoRenderWorker;
-import drm.taskworker.workers.ZipWorker;
+import drm.taskworker.config.Config;
 
 /**
  * This class starts pull workers for processing tasks from pull queues
  * 
- * @author Bart Vanbrabant
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class PullWorkerRegistration implements ServletContextListener {
+public class WorkerRegistration implements ServletContextListener {
 	private List<Worker> background_threads = null;
 	
-	public PullWorkerRegistration() {
+	public WorkerRegistration() {
 		background_threads = new ArrayList<Worker>();
 	}
 	
@@ -52,11 +49,13 @@ public class PullWorkerRegistration implements ServletContextListener {
 	}
 
 	public void contextInitialized(ServletContextEvent event) {
-		this.addWorker(new BlobWorker());
-		this.addWorker(new XslFoRenderWorker());
-		this.addWorker(new CSVInvoiceWorker());
-		this.addWorker(new TemplateWorker());
-		this.addWorker(new ZipWorker());
+		InputStream input = event.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml");
+		Config config = Config.loadConfig(input);
+		
+		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
+			Worker w = worker.getWorkerInstance();
+			this.addWorker(w);
+		}
 	}
 
 	/**

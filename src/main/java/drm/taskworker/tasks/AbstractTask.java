@@ -17,15 +17,16 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker;
+package drm.taskworker.tasks;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.UUID;
 
 import com.google.appengine.api.taskqueue.TaskOptions;
+
+import drm.taskworker.Workflow;
 
 /**
  * A baseclass for all tasks.
@@ -34,15 +35,28 @@ import com.google.appengine.api.taskqueue.TaskOptions;
  */
 public abstract class AbstractTask implements Serializable {
 	private String worker = null;
-	private UUID workflowId = null;
+	private String symbolWorker = null;
+	private Workflow workflow = null;
+	private AbstractTask parent = null;
 	
 	/**
 	 * Create a task for a worker
 	 * 
+	 * @param workflow The workflow this task belongs to
+	 * @param parent The parent of this task
 	 * @param worker The name of the worker
 	 */
-	public AbstractTask(String worker) {
-		this.worker = worker;
+	public AbstractTask(Workflow workflow, AbstractTask parentTask, String worker) {
+		this.workflow = workflow;
+		this.parent = parentTask;
+		this.setSymbolWorker(worker);
+		
+		// lookup the next worker
+		if (this.parent != null) {
+			this.worker = workflow.resolveStep(this.parent.getWorker(), worker);
+		} else {
+			this.worker = worker;
+		}
 	}
 	
 	/**
@@ -82,26 +96,25 @@ public abstract class AbstractTask implements Serializable {
 		return this.worker;
 	}
 	
-
 	/**
-	 * Get the unique workflow id.
-	 * 
-	 * @return the workflowId
+	 * Get the workflow this task belongs to
+	 * @return
 	 */
-	public UUID getWorkflowId() {
-		return workflowId;
+	public Workflow getWorkflow() {
+		return this.workflow;
 	}
 
 	/**
-	 * Set the workflow id of this task. This workflow cannot be changed, if the
-	 * id is already set and this method is called again, an
-	 * IllegalArgumentException is thrown.
+	 * @return the symbolWorker
 	 */
-	public final void setWorkFlowId(UUID uuid) {
-		if (this.workflowId == null) {
-			this.workflowId = uuid;
-		} else {
-			throw new IllegalArgumentException();
-		}
+	public String getSymbolWorker() {
+		return symbolWorker;
+	}
+
+	/**
+	 * @param symbolWorker the symbolWorker to set
+	 */
+	private void setSymbolWorker(String symbolWorker) {
+		this.symbolWorker = symbolWorker;
 	}
 }

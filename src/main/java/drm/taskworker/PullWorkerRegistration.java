@@ -29,8 +29,9 @@ import com.google.appengine.api.ThreadManager;
 
 import drm.taskworker.workers.BlobWorker;
 import drm.taskworker.workers.CSVInvoiceWorker;
-import drm.taskworker.workers.PdfRenderWorker;
-import drm.taskworker.workers.TexInvoiceWorker;
+import drm.taskworker.workers.TemplateWorker;
+import drm.taskworker.workers.XslFoRenderWorker;
+import drm.taskworker.workers.ZipWorker;
 
 /**
  * This class starts pull workers for processing tasks from pull queues
@@ -52,9 +53,10 @@ public class PullWorkerRegistration implements ServletContextListener {
 
 	public void contextInitialized(ServletContextEvent event) {
 		this.addWorker(new BlobWorker());
-		this.addWorker(new PdfRenderWorker());
+		this.addWorker(new XslFoRenderWorker());
 		this.addWorker(new CSVInvoiceWorker());
-		this.addWorker(new TexInvoiceWorker());
+		this.addWorker(new TemplateWorker());
+		this.addWorker(new ZipWorker());
 	}
 
 	/**

@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
@@ -38,8 +38,9 @@ import com.google.appengine.api.taskqueue.QueueFactory;
  * Servlet implementation class StartWorkflowServlet
  */
 public class StartWorkflowServlet extends HttpServlet {
-    private BlobstoreService blobstoreService = BlobstoreServiceFactory.getBlobstoreService();
-	
+	private BlobstoreService blobstoreService = BlobstoreServiceFactory
+			.getBlobstoreService();
+
 	/**
 	 * @see HttpServlet#HttpServlet()
 	 */
@@ -61,26 +62,37 @@ public class StartWorkflowServlet extends HttpServlet {
 	 *      response)
 	 */
 	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        Map<String, List<BlobKey>> blobKeys = blobstoreService.getUploads(request);
-        
-        Queue q = QueueFactory.getQueue("pull-queue");
-        if (blobKeys.containsKey("file")) {
-        	List<BlobKey> keys = blobKeys.get("file");
-        	
-        	for (BlobKey key : keys) {
-		        // create a workflow task
-		        Task task = new Task("blob-to-cache");
-		        task.addParam("blob", key);
-		        
-			    q.add(task.toTaskOption());
-        	}
-        	
-        	// send end of workflow
-        	EndTask endTask = new EndTask("blob-to-cache");
-        	q.add(endTask.toTaskOption());
-        }
-	    
-        response.sendRedirect("/index.jsp");
-    }
+	protected void doPost(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
+		
+		Map<String, List<BlobKey>> blobKeys = 
+				blobstoreService.getUploads(request);
+
+		Queue q = QueueFactory.getQueue("pull-queue");
+		String id = "";
+		if (blobKeys.containsKey("file")) {
+			List<BlobKey> keys = blobKeys.get("file");
+
+			if (keys.size() != 1) {
+				throw new IllegalArgumentException(
+						"Exactly one input file is expected!");
+			}
+
+			BlobKey key = keys.get(0);
+
+			// create a workflow task
+			Task task = new StartTask("blob-to-cache");
+			task.addParam("blob", key);
+			q.add(task.toTaskOption());
+
+			// send end of workflow as the last task
+			EndTask endTask = new EndTask(task.getWorker());
+			endTask.setWorkFlowId(task.getWorkflowId());
+			q.add(endTask.toTaskOption());
+
+			id = task.getWorkflowId().toString();
+		}
+
+		response.sendRedirect("/invoices.jsp?id=workflow-" + id);
+	}
 }

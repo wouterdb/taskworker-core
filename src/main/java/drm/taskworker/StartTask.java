@@ -15,17 +15,34 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
+import java.util.UUID;
+
+
 /**
+ * This task starts a workflow
  * 
- *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class StartTask extends Task {
+
+	/**
+	 * Create a new workflow start task. On creation a unique workflow id is
+	 * generated.
+	 * 
+	 * @param nextStep
+	 */
 	public StartTask(String nextStep) {
 		super(nextStep);
+		this.setWorkFlowId(UUID.randomUUID());
 	}
+
+	@Override
+	public String getTaskType() {
+		return "start";
+	}
+
 }

@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
@@ -37,8 +37,9 @@ import com.google.appengine.api.taskqueue.TaskHandle;
  * 
  */
 public abstract class Worker implements Runnable {
-	protected static final Logger logger = Logger.getLogger(Worker.class.getCanonicalName()); 
-	
+	protected static final Logger logger = Logger.getLogger(Worker.class
+			.getCanonicalName());
+
 	private String name = null;
 	private boolean working = true;
 
@@ -56,12 +57,12 @@ public abstract class Worker implements Runnable {
 	 * Do the work for the given task.
 	 */
 	public abstract TaskResult work(Task task);
-	
+
 	/**
 	 * Signal the end of the workflow.
 	 */
 	public abstract TaskResult work(EndTask task);
-	
+
 	/**
 	 * Stop working so the thread ends clean
 	 */
@@ -78,29 +79,63 @@ public abstract class Worker implements Runnable {
 		while (this.working) {
 			try {
 				Queue q = QueueFactory.getQueue("pull-queue");
-				List<TaskHandle> tasks = q.leaseTasksByTag(10, TimeUnit.SECONDS, 1, this.name);
-
+				List<TaskHandle> tasks = q.leaseTasksByTag(10,
+						TimeUnit.SECONDS, 1, this.name);
+				
+				// this check is a safeguard against bad queue behavior
+				if (tasks.size() > 1) {
+					throw new IllegalStateException("Queue returns more results than requested");
+				}
+				
+				// do work!
 				if (!tasks.isEmpty()) {
 					TaskHandle handle = tasks.get(0);
 
-					ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(handle.getPayload()));
-					Task task = (Task)ois.readObject();
+					ObjectInputStream ois = new ObjectInputStream(
+							new ByteArrayInputStream(handle.getPayload()));
+					AbstractTask task = (AbstractTask) ois.readObject();
 					ois.close();
-					
-					logger.info("Fetched task " + task.toString() + " for " + this.name + " with id " + handle.getName());
-					
-					TaskResult result = this.work(task);
-					
+
+					logger.info("Fetched task " + task.toString() + " for "
+							+ this.name + " with id " + handle.getName());
+
+					TaskResult result = null;
+					if (task.getTaskType() == "work" || task.getTaskType() == "start") {
+						result = this.work((Task) task);
+					} else if (task.getTaskType() == "end") {
+						result = this.work((EndTask) task);
+					} else {
+						logger.warning("Task type " + task.getTaskType()
+								+ " not known.");
+						continue;
+					}
+
+					if (result == null) {
+						logger.warning("Worker returns null. Ouch ...");
+						continue;
+					}
+
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
-						for (Task newTask : result.getNextTasks()) {
+						for (AbstractTask newTask : result.getNextTasks()) {
+							newTask.setWorkFlowId(task.getWorkflowId());
 							TaskHandle newTH = q.add(newTask.toTaskOption());
-							logger.info("New task for " + newTask.getWorker() + " on worker " + this.name + " added with id " + newTH.getName());
+							
+							logger.info("New task for " + newTask.getWorker()
+									+ " on worker " + this.name
+									+ " added with id " + newTH.getName());
+						}
+					} else {
+						logger.info("Task " + task.toString() + " failed with "
+								+ result.getResult().toString());
+						
+						if (result.getResult() == TaskResult.Result.EXCEPTION) {
+							result.getException().printStackTrace();
 						}
 					}
 					q.deleteTask(handle);
 				}
 
-				Thread.sleep(1000);
+				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (IOException e) {

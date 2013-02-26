@@ -38,7 +38,7 @@ import drm.taskworker.Worker;
  *
  */
 public class CSVInvoiceWorker extends Worker {
-	public static final String NEXT_TASK = "tex-invoice";
+	public static final String NEXT_TASK = "template-invoice";
 	
 	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
 

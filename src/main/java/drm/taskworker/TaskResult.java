@@ -32,14 +32,14 @@ public class TaskResult {
 	public enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};
 	
 	private Result result = null;
-	private List<Task> tasks = null;
+	private List<AbstractTask> tasks = null;
 	private Exception exception = null;
 
 	/**
 	 * Initialize a new taskresult
 	 */
 	public TaskResult() {
-		this.tasks = new ArrayList<Task>();
+		this.tasks = new ArrayList<AbstractTask>();
 	}
 	
 	/**
@@ -68,7 +68,7 @@ public class TaskResult {
 	 * 
 	 * @param task
 	 */
-	public void addNextTask(Task task) {
+	public void addNextTask(AbstractTask task) {
 		this.tasks.add(task);
 	}
 	
@@ -84,7 +84,7 @@ public class TaskResult {
 	 * 
 	 * @return A list of tasks that are the result of this task
 	 */
-	public List<Task> getNextTasks() {
+	public List<AbstractTask> getNextTasks() {
 		return this.tasks;
 	}
 

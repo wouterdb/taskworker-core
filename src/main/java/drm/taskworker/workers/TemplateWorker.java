@@ -34,10 +34,11 @@ import drm.taskworker.Task;
 import drm.taskworker.TaskResult;
 import drm.taskworker.Worker;
 
-public class TexInvoiceWorker extends Worker {
+public class TemplateWorker extends Worker {
+	public static final String NEXT_TASK = "xsl-fo-render";
 
-	public TexInvoiceWorker() {
-		super("tex-invoice");
+	public TemplateWorker() {
+		super("template-invoice");
 	}
 
 	@Override
@@ -51,7 +52,7 @@ public class TexInvoiceWorker extends Worker {
             ve.setProperty("runtime.log.logsystem.class", "org.apache.velocity.runtime.log.NullLogSystem");
             ve.init();
 
-            final String templatePath = "invoice.vm";
+            final String templatePath = "invoice-template.xsl";
             InputStream input = this.getClass().getClassLoader().getResourceAsStream(templatePath);
             if (input == null) {
                 throw new IOException("Template file doesn't exist");
@@ -69,9 +70,8 @@ public class TexInvoiceWorker extends Worker {
 			template.merge(context, writer);
 			writer.flush();
 	
-			Task newTask = new Task("pdf-render");
-			newTask.addParam("invoice-source", writer.toString());
-			
+			Task newTask = new Task(NEXT_TASK);
+			newTask.addParam("xslfo-source", writer.toString());
 			result.addNextTask(newTask);
 			
 			result.setResult(TaskResult.Result.SUCCESS);
@@ -86,8 +86,10 @@ public class TexInvoiceWorker extends Worker {
 
 	@Override
 	public TaskResult work(EndTask task) {
-		// TODO Auto-generated method stub
-		return null;
+		TaskResult result = new TaskResult();
+		result.addNextTask(new EndTask(NEXT_TASK));
+		
+		return result.setResult(TaskResult.Result.SUCCESS);
 	}
 	
 	

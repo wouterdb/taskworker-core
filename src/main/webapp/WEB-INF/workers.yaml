@@ -5,6 +5,8 @@ workers:
     - {template-to-xml: drm.taskworker.workers.TemplateWorker}
     - {xsl-fo-render: drm.taskworker.workers.XslFoRenderWorker}
     - {zip-files: drm.taskworker.workers.ZipWorker}
+    - {extract-urls: drm.taskworker.workers.ExtractUrlWorker}
+    - {url-fetch: drm.taskworker.workers.UrlFetchWorker}
 
 workflows:
     invoices:
@@ -14,3 +16,9 @@ workflows:
             template-to-xml: {next: xsl-fo-render}
             xsl-fo-render: {next: zip-files}
         start: blob-to-cache
+    spider:
+        steps:
+            url-fetch: {next: extract-urls}
+            extract-urls: {next: url-fetch}
+        start: url-fetch        
+            

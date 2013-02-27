@@ -56,7 +56,7 @@ public class CrawlServlet extends HttpServlet {
 			StartTask task = workflow.newStartTask();
 			task.addParam("arg0", url);
 		
-			workflow.startNewWorkflow(task);
+			workflow.startNewWorkflow(task, false);
 		}
 	}
 

@@ -29,6 +29,7 @@ import javax.servlet.ServletContextListener;
 import com.google.appengine.api.ThreadManager;
 
 import drm.taskworker.config.Config;
+import drm.taskworker.schedule.Scheduler;
 
 /**
  * This class starts pull workers for processing tasks from pull queues
@@ -37,6 +38,7 @@ import drm.taskworker.config.Config;
  */
 public class WorkerRegistration implements ServletContextListener {
 	private List<Worker> background_threads = null;
+	private Scheduler scheduler = null;
 	
 	public WorkerRegistration() {
 		background_threads = new ArrayList<Worker>();
@@ -56,6 +58,9 @@ public class WorkerRegistration implements ServletContextListener {
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}
+		
+		//this.scheduler = new Scheduler();
+		//ThreadManager.createBackgroundThread(this.scheduler).start();
 	}
 
 	/**
@@ -64,6 +69,10 @@ public class WorkerRegistration implements ServletContextListener {
 	public void contextDestroyed(ServletContextEvent event) {
 		for (Worker thread : this.background_threads) {
 			thread.stopWorking();
+		}
+		
+		if (this.scheduler != null) {
+			this.scheduler.stop();
 		}
 	}
 }

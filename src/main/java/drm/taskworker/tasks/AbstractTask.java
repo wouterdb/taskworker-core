@@ -23,21 +23,44 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.UUID;
 
 import com.google.appengine.api.taskqueue.TaskOptions;
+import com.googlecode.objectify.Ref;
+import com.googlecode.objectify.annotation.Entity;
+import com.googlecode.objectify.annotation.Id;
+import com.googlecode.objectify.annotation.Parent;
 
 import drm.taskworker.Workflow;
+
 
 /**
  * A baseclass for all tasks.
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
+@Entity
 public abstract class AbstractTask implements Serializable {
+	@Id private String taskId = null;
+	
 	private String worker = null;
 	private String symbolWorker = null;
-	private Workflow workflow = null;
-	private AbstractTask parent = null;
+	
+	/*
+	 * The link to the workflow is transient so it is not included in the
+	 * queue. Additionally a workflowId is stored to look it up in the datastore.
+	 * 
+	 * TODO add Ref<> -> for @parent
+	 */
+	//private String workflowId = null;
+	@Parent transient private Ref<Workflow> workflowRef = null;
+	
+	/*
+	 * Same comment here as for workflow 
+	 */
+	//@Ignore transient private AbstractTask parent = null;
+	//private String parentId = null;
+	transient private Ref<AbstractTask> parentRef = null;
 	
 	/**
 	 * Create a task for a worker
@@ -47,16 +70,41 @@ public abstract class AbstractTask implements Serializable {
 	 * @param worker The name of the worker
 	 */
 	public AbstractTask(Workflow workflow, AbstractTask parentTask, String worker) {
-		this.workflow = workflow;
-		this.parent = parentTask;
+		this();
+		
+		this.workflowRef = Ref.create(workflow);
+		//this.workflowId = workflow.getWorkflowId();
+		
+		//this.parent = parentTask;
+		//this.parentId = parentTask.getId();
+		
 		this.setSymbolWorker(worker);
 		
 		// lookup the next worker
-		if (this.parent != null) {
-			this.worker = workflow.resolveStep(this.parent.getWorker(), worker);
+		if (parentTask != null) {
+			this.parentRef = Ref.create(parentTask);
+			this.worker = workflow.resolveStep(this.getParentTask().getWorker(), worker);
 		} else {
 			this.worker = worker;
 		}
+	}
+	
+	public AbstractTask() {
+		this.taskId = UUID.randomUUID().toString();
+	}
+	
+	/**
+	 * Get the id of this task.
+	 */
+	public String getId() {
+		return this.taskId;
+	}
+	
+	/**
+	 * Get the parent of this task.
+	 */
+	public AbstractTask getParentTask() {
+		return this.parentRef.get();
 	}
 	
 	/**
@@ -97,11 +145,10 @@ public abstract class AbstractTask implements Serializable {
 	}
 	
 	/**
-	 * Get the workflow this task belongs to
-	 * @return
+	 * Get the workflow this task belongs to.
 	 */
 	public Workflow getWorkflow() {
-		return this.workflow;
+		return this.workflowRef.get();
 	}
 
 	/**

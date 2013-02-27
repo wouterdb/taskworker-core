@@ -66,7 +66,7 @@ public class ZipWorker extends Worker {
 
 		// get the list of files to put in the zip, if it does not exist yet
 		// create it.
-		String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId().toString();
+		String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId();
 		List<byte[]> zipList = null;
 		if (this.cacheService.contains(zipKey)) {
 			zipList = (List<byte[]>)this.cacheService.get(zipKey);
@@ -98,7 +98,7 @@ public class ZipWorker extends Worker {
 		
 		try {
 			// get all zip files
-			String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId().toString();
+			String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId();
 			List<byte[]> zipList = null;
 			if (!this.cacheService.contains(zipKey)) {
 				logger.warning("empty zip file");
@@ -123,7 +123,7 @@ public class ZipWorker extends Worker {
 			byte[] zipData = boas.toByteArray();
 			boas.close();
 			
-			this.cacheService.put("workflow-" + task.getWorkflow().getWorkflowId().toString(), zipData);
+			this.cacheService.put("workflow-" + task.getWorkflow().getWorkflowId(), zipData);
 			logger.info("Stored zip file in cache under " + zipKey);
 		} catch (FileNotFoundException e) {
 			result.setResult(TaskResult.Result.EXCEPTION);

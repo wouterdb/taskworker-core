@@ -141,15 +141,14 @@ public abstract class Worker implements Runnable {
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						for (AbstractTask newTask : result.getNextTasks()) {
 							
-							TaskHandle newTH = q.add(newTask.toTaskOption());
+							newTask.getWorkflow().queueTask(newTask);
 							
 							logger.info("New task for " + newTask.getWorker()
-									+ " on worker " + this.name
-									+ " added with id " + newTH.getName());
+									+ " on worker " + this.name);
 						}
 					} else {
 						logger.info("Task " + task.toString() + " failed with "
-								+ result.getResult().toString());
+								+ result.getResult().toString() + " on " + this.name);
 						
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();

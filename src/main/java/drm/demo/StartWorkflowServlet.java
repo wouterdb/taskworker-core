@@ -19,6 +19,8 @@
 
 package drm.demo;
 
+import static com.googlecode.objectify.ObjectifyService.ofy;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -31,12 +33,18 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
+import com.googlecode.objectify.ObjectifyService;
 
 import drm.taskworker.Workflow;
+import drm.taskworker.tasks.AbstractTask;
+import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
+import drm.taskworker.tasks.Task;
 
 /**
  * Servlet implementation class StartWorkflowServlet
+ * 
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class StartWorkflowServlet extends HttpServlet {
 	private BlobstoreService blobstoreService = BlobstoreServiceFactory
@@ -66,6 +74,7 @@ public class StartWorkflowServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
+//		/ObjectifyService.register(Workflow.class);
 		Map<String, List<BlobKey>> blobKeys = 
 				blobstoreService.getUploads(request);
 
@@ -85,10 +94,21 @@ public class StartWorkflowServlet extends HttpServlet {
 			StartTask task = workflow.newStartTask();
 			task.addParam("arg0", key);
 			
-			workflow.startNewWorkflow(task);
-			id = workflow.getWorkflowId().toString();
+			workflow.startNewWorkflow(task, true);
+			id = workflow.getWorkflowId();
+			
+			ofy().save().entities(workflow);
 		}
 
 		response.sendRedirect("/invoices.jsp?id=workflow-" + id);
 	}
+	
+	static {
+		ObjectifyService.register(Workflow.class);
+		ObjectifyService.register(AbstractTask.class);
+		ObjectifyService.register(Task.class);
+		ObjectifyService.register(StartTask.class);
+		ObjectifyService.register(EndTask.class);
+	}
 }
+

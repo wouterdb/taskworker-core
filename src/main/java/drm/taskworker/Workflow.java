@@ -26,28 +26,47 @@ import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
+import com.googlecode.objectify.annotation.Entity;
+import com.googlecode.objectify.annotation.Id;
+import com.googlecode.objectify.annotation.Ignore;
 
 import drm.taskworker.config.Config;
+import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
 import drm.taskworker.tasks.Task;
+
+import static com.googlecode.objectify.ObjectifyService.ofy;
 
 /**
  * This class manages a workflow
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
+@Entity
 public class Workflow implements Serializable {
 	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
+	@Ignore private drm.taskworker.config.WorkflowConfig workflowConfig = null;
 	
 	private String name = null;
-	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
-	private UUID workflowId = null;
+	@Id private String workflowId = null;
 	
+	/**
+	 * Create a new workflow instance
+	 * 
+	 * @param name The name of the workflow to start an instance of
+	 */
 	public Workflow(String name) {
-		this.workflowId = UUID.randomUUID();
+		this();
 		this.setName(name);
 		this.loadConfig();
+	}
+	
+	/**
+	 * Default constructor, that only sets a UUID
+	 */
+	public Workflow() {
+		this.workflowId = UUID.randomUUID().toString();
 	}
 
 	/**
@@ -59,6 +78,9 @@ public class Workflow implements Serializable {
 	}
 
 	/**
+	 * The name of the workflow. This name is a type of workflow, an instance
+	 * of this workflow is identified with the workflowId
+	 * 
 	 * @return the name
 	 */
 	public String getName() {
@@ -90,13 +112,14 @@ public class Workflow implements Serializable {
 	 * @param task
 	 * @return
 	 */
-	public void startNewWorkflow(StartTask task) throws IOException {
-		Queue q = QueueFactory.getQueue("pull-queue");
-		q.add(task.toTaskOption());
-			
-		// send end of workflow as the last task
-		EndTask endTask = new EndTask(task, task.getWorker());
-		q.add(endTask.toTaskOption());
+	public void startNewWorkflow(StartTask task, boolean end) throws IOException {
+		this.queueTask(task);
+
+		if (end) {
+			// send end of workflow as the last task
+			EndTask endTask = new EndTask(task, task.getWorker());
+			this.queueTask(endTask);
+		}
 		
 		logger.info("Started workflow. Added task for " + task.getWorker());
 	}
@@ -116,14 +139,14 @@ public class Workflow implements Serializable {
 	 */
 	@Override
 	public String toString() {
-		return "workflow-" + this.workflowId.toString();
+		return "workflow-" + this.workflowId;
 	}
 	
 	/**
 	 * Get the unique id of this workflow.
 	 * @return
 	 */
-	public UUID getWorkflowId() {
+	public String getWorkflowId() {
 		return this.workflowId;
 	}
 
@@ -132,5 +155,21 @@ public class Workflow implements Serializable {
 	 */
 	public StartTask newStartTask() {
 		return new StartTask(this, this.workflowConfig.getWorkflowStart());
+	}
+	
+	/**
+	 * Add a new task to the queue
+	 */
+	public void queueTask(AbstractTask task) {
+		try {
+			// persist the task
+			ofy().save().entities(task);
+			
+			// add it to the queue
+			Queue q = QueueFactory.getQueue("pull-queue");
+			q.add(task.toTaskOption());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

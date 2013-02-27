@@ -17,34 +17,44 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker.tasks;
+package drm.taskworker.schedule;
 
-import com.googlecode.objectify.annotation.EntitySubclass;
-
-import drm.taskworker.Workflow;
+import org.infinispan.Cache;
+import org.jboss.capedwarf.common.app.Application;
+import org.jboss.capedwarf.common.infinispan.CacheName;
+import org.jboss.capedwarf.common.infinispan.InfinispanUtils;
 
 /**
- * The root task of a workflow
+ * 
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@EntitySubclass(index=true)
-public class StartTask extends Task {
-	/**
-	 * Create a task that starts the workflow.
-	 * @param workflow
-	 * @param worker
-	 */
-	public StartTask(Workflow workflow, String worker) {
-		super(workflow, null, worker);
+public class Scheduler implements Runnable {
+	private Cache<Object, Object> cache = InfinispanUtils.getCache(Application.getAppId(), CacheName.TASKS);
+	private boolean running = true;
+	
+	public Scheduler() {
 	}
 	
-	public StartTask() {
-		super();
+	
+	public void schedule() {
+		System.err.println("Number of cache items: " + cache.size());
 	}
 
 	@Override
-	public String getTaskType() {
-		return "start";
+	public void run() {
+		while (this.running) { // keep on running
+			try {
+				this.schedule();
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+
+	public void stop() {
+		this.running = false;
 	}
 }

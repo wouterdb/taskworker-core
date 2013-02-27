@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.googlecode.objectify.annotation.EntitySubclass;
+
 import drm.taskworker.Workflow;
 
 /**
@@ -30,8 +32,9 @@ import drm.taskworker.Workflow;
  *
  * TODO Add the history of the task
  * 
- * @author bart
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
+@EntitySubclass(index=true)
 public class Task extends AbstractTask {
 	private Map<String,Object> params = new HashMap<String, Object>();
 
@@ -43,6 +46,10 @@ public class Task extends AbstractTask {
 	 */
 	public Task(AbstractTask parent, String worker) {
 		super(parent.getWorkflow(), parent, worker);
+	}
+	
+	public Task() {
+		super();
 	}
 	
 	/**

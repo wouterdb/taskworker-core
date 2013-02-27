@@ -25,8 +25,7 @@ import java.util.List;
 /**
  * Instances of this class are used by workers to return a result. 
  * 
- * @author bart
- *
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class TaskResult {
 	public enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};

@@ -51,7 +51,7 @@ public class BlobWorker extends Worker {
 	 * Retrieves the blob from the blobstore and puts it in the memcache service
 	 * with the same key as the blob.
 	 * 
-	 * @in blob:BlobKey The info of the blob to put into the cache
+	 * @in arg0 The info of the blob to put into the cache
 	 * 
 	 * @out key:String The key used to save the blob to the cache service
 	 * 
@@ -61,11 +61,13 @@ public class BlobWorker extends Worker {
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
 		if (!task.hasParam("arg0")) {
+			logger.warning("Worker requires arg0 argument");
 			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 
-		BlobKey blobKey = (BlobKey) task.getParam("blob");
+		BlobKey blobKey = (BlobKey) task.getParam("arg0");
 		if (blobKey == null) {
+			logger.warning("The argument arg0 should have a value");
 			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 		

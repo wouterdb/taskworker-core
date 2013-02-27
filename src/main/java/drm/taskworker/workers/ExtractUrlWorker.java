@@ -28,6 +28,7 @@ import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
 
@@ -59,6 +60,7 @@ public class ExtractUrlWorker extends Worker {
 		
 		String html = (String)task.getParam("arg0");
 
+		System.out.println(html);
 		Document doc = Jsoup.parse(html);
 		Elements links = doc.select("a[href]"); // a with href
 
@@ -66,6 +68,7 @@ public class ExtractUrlWorker extends Worker {
 			Element el = links.get(i);
 			
 			String href = el.attr("href");
+			System.err.println(href);
 			if (href.startsWith("http://") && !this.cacheService.contains(href)) {
 				Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
 				newTask.addParam("arg0", href);
@@ -74,6 +77,14 @@ public class ExtractUrlWorker extends Worker {
 		}
 		
         result.setResult(TaskResult.Result.SUCCESS);
+		return result;
+	}
+	
+	@Override
+	public TaskResult work(EndTask task) {
+		// dont stop  and fork:)
+		TaskResult result = new TaskResult();
+		result.setResult(TaskResult.Result.SUCCESS);
 		return result;
 	}
 

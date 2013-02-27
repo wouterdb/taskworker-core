@@ -53,7 +53,7 @@ public class UrlFetchWorker extends Worker {
 		
 		String link = (String)task.getParam("arg0");
 		try {
-	        URL url = new URL(link);
+			URL url = new URL(link);
 	        BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
 	        String line = null;
 	        StringBuffer webPage = new StringBuffer();

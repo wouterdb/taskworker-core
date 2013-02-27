@@ -17,14 +17,21 @@
 	   <servlet-name>download</servlet-name>
 	   <servlet-class>drm.demo.DownloadServlet</servlet-class>
 	</servlet>
+	   <servlet>
+       <servlet-name>crawl</servlet-name>
+       <servlet-class>drm.demo.CrawlServlet</servlet-class>
+    </servlet>
 
 	<servlet-mapping>
 		<servlet-name>start</servlet-name>
 		<url-pattern>/start</url-pattern>
 	</servlet-mapping>
-	
 	<servlet-mapping>
         <servlet-name>download</servlet-name>
         <url-pattern>/download</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>crawl</servlet-name>
+        <url-pattern>/crawl</url-pattern>
     </servlet-mapping>
 </web-app>

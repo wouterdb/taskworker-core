@@ -22,24 +22,23 @@ package drm.demo;
 import java.io.IOException;
 
 import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.appengine.api.memcache.MemcacheService;
-import com.google.appengine.api.memcache.MemcacheServiceFactory;
+import drm.taskworker.Workflow;
+import drm.taskworker.tasks.StartTask;
 
 /**
- * Servlet implementation class DownloadServlet
+ * 
+ *
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class DownloadServlet extends HttpServlet {
-	private MemcacheService memcacheService = MemcacheServiceFactory.getMemcacheService();
-
+public class CrawlServlet extends HttpServlet {
 	/**
 	 * @see HttpServlet#HttpServlet()
 	 */
-	public DownloadServlet() {
+	public CrawlServlet() {
 		super();
 	}
 
@@ -49,23 +48,15 @@ public class DownloadServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		String id = request.getParameter("id");
+		String url = request.getParameter("url");
+		
+		if (url != null) {
+			Workflow workflow = new Workflow("spider");
 
-		if (memcacheService.contains(id)) {
-			byte[] zipFile = (byte[]) memcacheService.get(id);
-
-			// sets response content type
-			response.setContentType("application/zip");
-			response.setContentLength(zipFile.length);
-
-			// sets HTTP header
-			response.setHeader("Content-Disposition", "attachment; filename=\"invoices.zip\"");
-
-			ServletOutputStream outStream = response.getOutputStream();
-			outStream.write(zipFile, 0, zipFile.length);
-			outStream.close();
-		} else {
-			response.sendRedirect("/invoices.jsp?id=" + id);
+			StartTask task = workflow.newStartTask();
+			task.addParam("arg0", url);
+		
+			workflow.startNewWorkflow(task);
 		}
 	}
 

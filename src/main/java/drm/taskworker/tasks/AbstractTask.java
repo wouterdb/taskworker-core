@@ -33,6 +33,8 @@ import com.googlecode.objectify.annotation.Parent;
 
 import drm.taskworker.Workflow;
 
+import static com.googlecode.objectify.ObjectifyService.ofy;
+
 
 /**
  * A baseclass for all tasks.
@@ -47,19 +49,18 @@ public abstract class AbstractTask implements Serializable {
 	private String symbolWorker = null;
 	
 	/*
-	 * The link to the workflow is transient so it is not included in the
-	 * queue. Additionally a workflowId is stored to look it up in the datastore.
-	 * 
-	 * TODO add Ref<> -> for @parent
+	 * The link to the workflowRef is transient because it is not possible to
+	 * serialize the ref when we place a task on the queue. To be able to 
+	 * restore this ref, we need to store the workflow id as well so we can
+	 * rebuild the ref.
 	 */
-	//private String workflowId = null;
+	private String workflowId = null;
 	@Parent transient private Ref<Workflow> workflowRef = null;
 	
 	/*
 	 * Same comment here as for workflow 
 	 */
-	//@Ignore transient private AbstractTask parent = null;
-	//private String parentId = null;
+	private String parentId = null;
 	transient private Ref<AbstractTask> parentRef = null;
 	
 	/**
@@ -73,16 +74,14 @@ public abstract class AbstractTask implements Serializable {
 		this();
 		
 		this.workflowRef = Ref.create(workflow);
-		//this.workflowId = workflow.getWorkflowId();
-		
-		//this.parent = parentTask;
-		//this.parentId = parentTask.getId();
+		this.workflowId = workflow.getWorkflowId();
 		
 		this.setSymbolWorker(worker);
 		
 		// lookup the next worker
 		if (parentTask != null) {
 			this.parentRef = Ref.create(parentTask);
+			this.parentId = parentTask.getId();
 			this.worker = workflow.resolveStep(this.getParentTask().getWorker(), worker);
 		} else {
 			this.worker = worker;
@@ -104,7 +103,15 @@ public abstract class AbstractTask implements Serializable {
 	 * Get the parent of this task.
 	 */
 	public AbstractTask getParentTask() {
-		return this.parentRef.get();
+		if (this.parentId == null) {
+			// this is a root node
+			return null;
+		}
+		
+		if (this.parentRef == null) {
+			this.parentRef = ofy().load().type(AbstractTask.class).id(this.parentId);
+		}
+		return this.parentRef.safeGet();
 	}
 	
 	/**
@@ -148,7 +155,11 @@ public abstract class AbstractTask implements Serializable {
 	 * Get the workflow this task belongs to.
 	 */
 	public Workflow getWorkflow() {
-		return this.workflowRef.get();
+		if (this.workflowRef == null) {
+			this.workflowRef = ofy().load().type(Workflow.class).id(this.workflowId);
+		}
+		Workflow wf = this.workflowRef.safeGet();
+		return wf;
 	}
 
 	/**

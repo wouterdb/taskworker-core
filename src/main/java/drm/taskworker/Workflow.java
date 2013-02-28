@@ -74,7 +74,7 @@ public class Workflow implements Serializable {
 	 */
 	private void loadConfig() {
 		Config cfg = Config.getConfig();
-		this.workflowConfig  = cfg.getWorkflow(this.name);
+		this.setWorkflowConfig(cfg.getWorkflow(this.name));
 	}
 
 	/**
@@ -103,7 +103,7 @@ public class Workflow implements Serializable {
 	 * @return The actual next step.
 	 */
 	public String resolveStep(String stepName, String nextSymbol) {
-		return this.workflowConfig.getNextStep(stepName, nextSymbol);
+		return this.getWorkflowConfig().getNextStep(stepName, nextSymbol);
 	}
 	
 	/**
@@ -154,7 +154,7 @@ public class Workflow implements Serializable {
 	 * Create a new task that starts the workflow
 	 */
 	public StartTask newStartTask() {
-		return new StartTask(this, this.workflowConfig.getWorkflowStart());
+		return new StartTask(this, this.getWorkflowConfig().getWorkflowStart());
 	}
 	
 	/**
@@ -171,5 +171,22 @@ public class Workflow implements Serializable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * @return the workflowConfig
+	 */
+	public drm.taskworker.config.WorkflowConfig getWorkflowConfig() {
+		if (this.workflowConfig == null) {
+			this.loadConfig();
+		}
+		return this.workflowConfig;
+	}
+
+	/**
+	 * @param workflowConfig the workflowConfig to set
+	 */
+	private void setWorkflowConfig(drm.taskworker.config.WorkflowConfig workflowConfig) {
+		this.workflowConfig = workflowConfig;
 	}
 }

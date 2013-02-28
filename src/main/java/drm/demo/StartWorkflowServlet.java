@@ -89,8 +89,10 @@ public class StartWorkflowServlet extends HttpServlet {
 
 			BlobKey key = keys.get(0);
 			
+			// create a workflow and save it
 			Workflow workflow = new Workflow("invoices");
-
+			ofy().save().entities(workflow);
+			
 			StartTask task = workflow.newStartTask();
 			task.addParam("arg0", key);
 			

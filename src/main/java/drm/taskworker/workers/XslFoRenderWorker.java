@@ -57,11 +57,11 @@ public class XslFoRenderWorker extends Worker {
 	@Override
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
-		if (!task.hasParam("arg0")) {
+		if (!task.hasParam("arg0") || !cacheService.contains(task.getParam("arg0"))) {
 			return result.setResult(TaskResult.Result.ERROR);
 		}
 
-		String invoice_source = (String) task.getParam("arg0");
+		String invoice_source = (String)cacheService.get((String) task.getParam("arg0"));
 
 		try {
 			TransformerFactory tFactory = TransformerFactory.newInstance();

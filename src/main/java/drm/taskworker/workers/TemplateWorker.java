@@ -29,6 +29,9 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
+
 import drm.taskworker.Worker;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
@@ -39,6 +42,8 @@ import drm.taskworker.tasks.TaskResult;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class TemplateWorker extends Worker {
+	private MemcacheService cacheService = MemcacheServiceFactory.getMemcacheService();
+	
 	public TemplateWorker(String workerName) {
 		super(workerName);
 	}
@@ -71,13 +76,14 @@ public class TemplateWorker extends Worker {
 			StringWriter writer = new StringWriter();
 			template.merge(context, writer);
 			writer.flush();
+			
+			this.cacheService.put(task.getId(), writer.toString());
 	
 			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
-			newTask.addParam("arg0", writer.toString());
+			newTask.addParam("arg0", task.getId());
 			result.addNextTask(newTask);
 			
 			result.setResult(TaskResult.Result.SUCCESS);
-			
             writer.close();
 		} catch (Exception e) {
 			e.printStackTrace();

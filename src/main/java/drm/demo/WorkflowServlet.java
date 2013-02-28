@@ -78,7 +78,6 @@ public class WorkflowServlet extends HttpServlet {
 				if (graph.get(task.getParentTask()).size() > max) {
 					max = graph.get(task.getParentTask()).size();
 				}
-				System.out.println(task.getParentTask().getId() + " -> " + task.getId());
 			}
 		}
 		

@@ -6,6 +6,10 @@
 	<head>
 	   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	   <title>Workflow list</title>
+	   
+	   <script type="text/javascript" src="js/raphael-min.js"></script>
+       <script type="text/javascript" src="js/graffle.js"></script>
+       <script type="text/javascript" src="js/graph.js"></script>
 	</head>
 	<body>
 		<h1>Workflow list</h1>
@@ -21,17 +25,39 @@
 		
 		<c:if test="${not empty workflow}">
 		<h2>Workflow history for ${workflow.workflowId} - ${workflow.name}</h2>
-		      <dl>
+		
+        <script type="text/javascript">
+<!--
+
+	var redraw;
+	var height = 600;
+	var width = 1000;
+
+	/* only do all this when document has finished loading (needed for RaphaelJS */
+	window.onload = function() {
+	    var g = new Graph();
+
         <c:forEach var="task" items="${workflow.history}">
-          <dd>${task.getId()} - ${task.getParentTask().getId()}</dd>
+        g.addEdge("${task.getParentTask().getId()}", "${task.getId()}");
         </c:forEach>
-        </dl>
+	
+	    /* layout the graph using the Spring layout implementation */
+	    var layouter = new Graph.Layout.Spring(g);
+	    layouter.layout();
+	    
+	    /* draw the graph using the RaphaelJS draw implementation */
+	    var renderer = new Graph.Renderer.Raphael('canvas', g, width, height);
+	    renderer.draw();
+	    
+	    redraw = function() {
+	        layouter.layout();
+	        renderer.draw();
+	    };
+	};
+
+-->     </script>
         
-        <table>
-            <tr>
-            </tr>
-            
-        </table>
+        <div id="canvas"></div>
         </c:if>
 	</body>
 </html>

@@ -53,6 +53,9 @@ public class WorkflowServlet extends HttpServlet {
 
 		request.setAttribute("workflows", workflows);
 
+		AbstractTask root = null;
+		Map<AbstractTask, List<AbstractTask>> graph = new HashMap<AbstractTask, List<AbstractTask>>();
+		
 		if (request.getParameter("workflowId") != null) {
 			// load the workflow
 			try { 
@@ -60,30 +63,30 @@ public class WorkflowServlet extends HttpServlet {
 			} catch (NotFoundException e) {
 				// do nothing
 			}
-		}
 		
-		// create a graph
-		AbstractTask root = null;
-		Map<AbstractTask, List<AbstractTask>> graph = new HashMap<AbstractTask, List<AbstractTask>>();
-		int max = 0;
-		for (AbstractTask task : workflow.getHistory()) {
-			if (task.getParentTask() == null) {
-				root = task;
-			} else {
-				if (!graph.containsKey(task.getParentTask())) {
-					graph.put(task.getParentTask(), new ArrayList<AbstractTask>());
-				}
-				graph.get(task.getParentTask()).add(task);
-				
-				if (graph.get(task.getParentTask()).size() > max) {
-					max = graph.get(task.getParentTask()).size();
+			// create a graph
+
+			int max = 0;
+			for (AbstractTask task : workflow.getHistory()) {
+				if (task.getParentTask() == null) {
+					root = task;
+				} else {
+					if (!graph.containsKey(task.getParentTask())) {
+						graph.put(task.getParentTask(), new ArrayList<AbstractTask>());
+					}
+					graph.get(task.getParentTask()).add(task);
+					
+					if (graph.get(task.getParentTask()).size() > max) {
+						max = graph.get(task.getParentTask()).size();
+					}
 				}
 			}
+
 		}
 		
-		request.setAttribute("workflow", workflow);
 		request.setAttribute("graph", graph);
 		request.setAttribute("root", root);
+		request.setAttribute("workflow", workflow);
 		request.getRequestDispatcher("/workflow.jsp").forward(request, response);
 	}
 

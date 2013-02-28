@@ -123,7 +123,9 @@ public abstract class Worker implements Runnable {
 					logger.info("Fetched task " + task.toString() + " for "
 							+ this.name + " with id " + handle.getName());
 
+					// execute the task
 					TaskResult result = null;
+					task.setStartedAt();
 					if (task.getTaskType() == "work" || task.getTaskType() == "start") {
 						result = this.work((Task) task);
 					} else if (task.getTaskType() == "end") {
@@ -132,6 +134,8 @@ public abstract class Worker implements Runnable {
 						logger.warning("Task type " + task.getTaskType() + " not known.");
 						continue;
 					}
+					task.setFinishedAt();
+					task.save();
 
 					if (result == null) {
 						logger.warning("Worker returns null. Ouch ...");

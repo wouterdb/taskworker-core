@@ -19,21 +19,23 @@
 
 package drm.taskworker.tasks;
 
+import static com.googlecode.objectify.ObjectifyService.ofy;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Date;
 import java.util.UUID;
 
 import com.google.appengine.api.taskqueue.TaskOptions;
 import com.googlecode.objectify.Ref;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
+import com.googlecode.objectify.annotation.Load;
 import com.googlecode.objectify.annotation.Parent;
 
 import drm.taskworker.Workflow;
-
-import static com.googlecode.objectify.ObjectifyService.ofy;
 
 
 /**
@@ -47,6 +49,9 @@ public abstract class AbstractTask implements Serializable {
 	
 	private String worker = null;
 	private String symbolWorker = null;
+	private Date createdAt = null;
+	private Date startedAt = null;
+	private Date finishedAt = null;
 	
 	/*
 	 * The link to the workflowRef is transient because it is not possible to
@@ -55,13 +60,13 @@ public abstract class AbstractTask implements Serializable {
 	 * rebuild the ref.
 	 */
 	private String workflowId = null;
-	@Parent transient private Ref<Workflow> workflowRef = null;
+	@Load @Parent transient private Ref<Workflow> workflowRef = null;
 	
 	/*
 	 * Same comment here as for workflow 
 	 */
 	private String parentId = null;
-	transient private Ref<AbstractTask> parentRef = null;
+	@Load transient private Ref<AbstractTask> parentRef = null;
 	
 	/**
 	 * Create a task for a worker
@@ -75,6 +80,7 @@ public abstract class AbstractTask implements Serializable {
 		
 		this.workflowRef = Ref.create(workflow);
 		this.workflowId = workflow.getWorkflowId();
+		workflow.addTaskToHistory(this);
 		
 		this.setSymbolWorker(worker);
 		
@@ -86,6 +92,9 @@ public abstract class AbstractTask implements Serializable {
 		} else {
 			this.worker = worker;
 		}
+		
+		// set the date the task was created
+		this.setCreatedAt(new Date());
 	}
 	
 	public AbstractTask() {
@@ -109,7 +118,7 @@ public abstract class AbstractTask implements Serializable {
 		}
 		
 		if (this.parentRef == null) {
-			this.parentRef = ofy().load().type(AbstractTask.class).id(this.parentId);
+			this.parentRef = ofy().load().type(AbstractTask.class).parent(this.workflowRef).id(this.parentId);
 		}
 		return this.parentRef.safeGet();
 	}
@@ -174,5 +183,68 @@ public abstract class AbstractTask implements Serializable {
 	 */
 	private void setSymbolWorker(String symbolWorker) {
 		this.symbolWorker = symbolWorker;
+	}
+
+	/**
+	 * @return the createdAt
+	 */
+	public Date getCreatedAt() {
+		return createdAt;
+	}
+
+	/**
+	 * @param createdAt the createdAt to set
+	 */
+	public void setCreatedAt(Date createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	/**
+	 * @return the startedAt
+	 */
+	public Date getStartedAt() {
+		return startedAt;
+	}
+
+	/**
+	 * @param startedAt the startedAt to set
+	 */
+	public void setStartedAt(Date startedAt) {
+		this.startedAt = startedAt;
+	}
+	
+	/**
+	 * Set the start date to now.
+	 */
+	public void setStartedAt() {
+		this.setStartedAt(new Date());
+	}
+
+	/**
+	 * @return the finishedAt
+	 */
+	public Date getFinishedAt() {
+		return finishedAt;
+	}
+
+	/**
+	 * @param finishedAt the finishedAt to set
+	 */
+	public void setFinishedAt(Date finishedAt) {
+		this.finishedAt = finishedAt;
+	}
+	
+	/**
+	 * Set the finished date to now
+	 */
+	public void setFinishedAt() {
+		this.setFinishedAt(new Date());
+	}
+	
+	/**
+	 * Save the task to the datastore.
+	 */
+	public void save() {
+		ofy().save().entity(this);
 	}
 }

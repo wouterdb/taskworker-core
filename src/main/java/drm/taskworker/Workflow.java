@@ -19,13 +19,19 @@
 
 package drm.taskworker;
 
+import static com.googlecode.objectify.ObjectifyService.ofy;
+
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
+import com.googlecode.objectify.Key;
+import com.googlecode.objectify.Ref;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
 import com.googlecode.objectify.annotation.Ignore;
@@ -35,8 +41,6 @@ import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
 import drm.taskworker.tasks.Task;
-
-import static com.googlecode.objectify.ObjectifyService.ofy;
 
 /**
  * This class manages a workflow
@@ -50,6 +54,8 @@ public class Workflow implements Serializable {
 	
 	private String name = null;
 	@Id private String workflowId = null;
+	
+	@Ignore private List<AbstractTask> historyList = new ArrayList<AbstractTask>();
 	
 	/**
 	 * Create a new workflow instance
@@ -189,4 +195,39 @@ public class Workflow implements Serializable {
 	private void setWorkflowConfig(drm.taskworker.config.WorkflowConfig workflowConfig) {
 		this.workflowConfig = workflowConfig;
 	}
+	
+	/**
+	 * Add a new task to the workflow
+	 * 
+	 * @param task The task to add to the history of the workflow.
+	 */
+	public void addTaskToHistory(AbstractTask task) {
+		// make sure the list of tasks is loaded again
+		this.getHistory();
+		
+		// then add it
+		this.historyList.add(task);
+	}
+
+	/**
+	 * Save the workflow to the datastore
+	 */
+	public void save() {
+		// save the workflow
+		ofy().save().entity(this);
+	}
+	
+	/**
+	 * Get the history of the workflow.
+	 */
+	public List<AbstractTask> getHistory() {
+		if (this.historyList.size() == 0) {
+			// load it from the datastore
+			for (AbstractTask task : ofy().load().type(AbstractTask.class).ancestor(this).iterable()) {
+				this.historyList.add(task);
+			}
+		}
+		return this.historyList;
+	}
+
 }

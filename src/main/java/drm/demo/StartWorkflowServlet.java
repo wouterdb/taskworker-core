@@ -41,6 +41,9 @@ import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
 import drm.taskworker.tasks.Task;
 
+// import this here so entities are always loaded
+import drm.taskworker.Entities;
+
 /**
  * Servlet implementation class StartWorkflowServlet
  * 
@@ -74,7 +77,6 @@ public class StartWorkflowServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
-//		/ObjectifyService.register(Workflow.class);
 		Map<String, List<BlobKey>> blobKeys = 
 				blobstoreService.getUploads(request);
 
@@ -106,11 +108,7 @@ public class StartWorkflowServlet extends HttpServlet {
 	}
 	
 	static {
-		ObjectifyService.register(Workflow.class);
-		ObjectifyService.register(AbstractTask.class);
-		ObjectifyService.register(Task.class);
-		ObjectifyService.register(StartTask.class);
-		ObjectifyService.register(EndTask.class);
+		Entities.register();
 	}
 }
 

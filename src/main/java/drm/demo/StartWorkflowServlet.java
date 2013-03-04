@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -36,6 +37,7 @@ import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
 import com.googlecode.objectify.ObjectifyService;
 
 import drm.taskworker.Workflow;
+import drm.taskworker.config.Config;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
@@ -49,6 +51,7 @@ import drm.taskworker.Entities;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
+@WebServlet("/start")
 public class StartWorkflowServlet extends HttpServlet {
 	private BlobstoreService blobstoreService = BlobstoreServiceFactory
 			.getBlobstoreService();
@@ -67,8 +70,13 @@ public class StartWorkflowServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
+		// load the configuration
+		Config cfg = Config.loadConfig(this.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml"));
+		String[] workflowNames = cfg.getWorkflows().keySet().toArray(new String[0]);
+		request.setAttribute("workflows", workflowNames);
+		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
-
+	
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
 	 *      response)
@@ -76,35 +84,36 @@ public class StartWorkflowServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		
 		Map<String, List<BlobKey>> blobKeys = 
 				blobstoreService.getUploads(request);
-
-		String id = "";
-		if (blobKeys.containsKey("file")) {
+		
+		Object data = null;
+		String textField = request.getParameter("text");
+		if (blobKeys.size() == 1 && blobKeys.containsKey("file")) {
 			List<BlobKey> keys = blobKeys.get("file");
-
-			if (keys.size() != 1) {
-				throw new IllegalArgumentException(
-						"Exactly one input file is expected!");
-			}
-
-			BlobKey key = keys.get(0);
-			
+			data = keys.get(0);
+		} else if (textField != null && textField.length() > 0) {
+			data = request.getParameter("text");
+		} else {
+			request.setAttribute("error", "Either file or text should be provided.");
+		}
+		if (data != null) {
 			// create a workflow and save it
-			Workflow workflow = new Workflow("invoices");
+			Workflow workflow = new Workflow(request.getParameter("workflow"));
 			ofy().save().entities(workflow);
-			
+						
 			StartTask task = workflow.newStartTask();
-			task.addParam("arg0", key);
-			
+			task.addParam("arg0", data);
+						
 			workflow.startNewWorkflow(task, true);
-			id = workflow.getWorkflowId();
-			
+			String id = workflow.getWorkflowId();
+					
 			ofy().save().entities(workflow);
+			
+			request.setAttribute("workflowId", id);
 		}
 
-		response.sendRedirect("/invoices.jsp?id=workflow-" + id);
+		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
 	
 	static {

@@ -19,7 +19,7 @@
 
 package drm.demo;
 
-import static com.googlecode.objectify.ObjectifyService.ofy;
+import static drm.taskworker.Entities.ofy;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,17 +34,11 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
-import com.googlecode.objectify.ObjectifyService;
 
 import drm.taskworker.Workflow;
 import drm.taskworker.config.Config;
-import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
-import drm.taskworker.tasks.Task;
-
 // import this here so entities are always loaded
-import drm.taskworker.Entities;
 
 /**
  * Servlet implementation class StartWorkflowServlet
@@ -111,13 +105,10 @@ public class StartWorkflowServlet extends HttpServlet {
 			ofy().save().entities(workflow);
 			
 			request.setAttribute("workflowId", id);
+			
+			request.setAttribute("info", "Started workflow with id " + id);
 		}
 
 		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
-	
-	static {
-		Entities.register();
-	}
 }
-

@@ -19,8 +19,6 @@
 
 package drm.taskworker.tasks;
 
-import static com.googlecode.objectify.ObjectifyService.ofy;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -36,6 +34,7 @@ import com.googlecode.objectify.annotation.Load;
 import com.googlecode.objectify.annotation.Parent;
 
 import drm.taskworker.Workflow;
+import static drm.taskworker.Entities.ofy;
 
 
 /**

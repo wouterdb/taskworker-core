@@ -1,6 +1,6 @@
 package drm.demo;
 
-import static com.googlecode.objectify.ObjectifyService.ofy;
+import static drm.taskworker.Entities.ofy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.appengine.api.datastore.QueryResultIterable;
 import com.googlecode.objectify.NotFoundException;
 
-import drm.taskworker.Entities;
 import drm.taskworker.Workflow;
 import drm.taskworker.tasks.AbstractTask;
 
@@ -88,9 +87,5 @@ public class WorkflowServlet extends HttpServlet {
 		request.setAttribute("root", root);
 		request.setAttribute("workflow", workflow);
 		request.getRequestDispatcher("/workflow.jsp").forward(request, response);
-	}
-
-	static {
-		Entities.register();
 	}
 }

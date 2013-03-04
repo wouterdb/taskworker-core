@@ -15,7 +15,9 @@
 	</head>
 	<body>
 		<h1>Workflow interface</h1>
-		<div id="message">${error}</div>
+		<div id="error" style="color: red">${error}</div>
+		<div id="info" style="color: green">${info}</div>
+		
         <form action="<%= blobstoreService.createUploadUrl("/start") %>" method="POST" enctype="multipart/form-data">
             <label for="workflow">Workflow:</label>
 		    <select name="workflow" id="workflow">

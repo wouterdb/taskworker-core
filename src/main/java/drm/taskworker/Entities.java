@@ -19,6 +19,8 @@
 
 package drm.taskworker;
 
+import com.googlecode.objectify.Objectify;
+import com.googlecode.objectify.ObjectifyFactory;
 import com.googlecode.objectify.ObjectifyService;
 
 import drm.taskworker.tasks.AbstractTask;
@@ -27,12 +29,19 @@ import drm.taskworker.tasks.StartTask;
 import drm.taskworker.tasks.Task;
 
 public class Entities {
-	public static void register() {
-		System.err.println("Registered entities");
+    static {
 		ObjectifyService.register(Workflow.class);
 		ObjectifyService.register(AbstractTask.class);
 		ObjectifyService.register(Task.class);
 		ObjectifyService.register(StartTask.class);
 		ObjectifyService.register(EndTask.class);
-	}
+    }
+
+    public static Objectify ofy() {
+        return ObjectifyService.ofy();
+    }
+
+    public static ObjectifyFactory factory() {
+        return ObjectifyService.factory();
+    }
 }

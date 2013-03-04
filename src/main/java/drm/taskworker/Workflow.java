@@ -19,7 +19,7 @@
 
 package drm.taskworker;
 
-import static com.googlecode.objectify.ObjectifyService.ofy;
+import static drm.taskworker.Entities.ofy;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -30,8 +30,6 @@ import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
-import com.googlecode.objectify.Key;
-import com.googlecode.objectify.Ref;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
 import com.googlecode.objectify.annotation.Ignore;

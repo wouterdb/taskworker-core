@@ -33,6 +33,7 @@ import com.google.appengine.api.taskqueue.QueueFactory;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
 import com.googlecode.objectify.annotation.Ignore;
+import com.googlecode.objectify.annotation.Index;
 
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.AbstractTask;

@@ -19,15 +19,26 @@
         Technical Contact: bart.vanbrabant@cs.kuleuven.be
 
 --%>
+<%@page import="drm.taskworker.tasks.AbstractTask"%>
+<%@page import="java.util.List"%>
+<%@page import="drm.taskworker.tasks.Task"%>
+<%@page import="drm.taskworker.Workflow"%>
+<%@page import="java.util.Date"%>
+<%@page import="drm.taskworker.monitoring.Monitor"%>
+<%@page import="drm.taskworker.monitoring.IMonitor"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
+
+<%
+    IMonitor mon = new Monitor();
+%>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Insert title here</title>
-</head>
-<body>
-
-</body>
+	<head>
+	   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	   <title>Monitor</title>
+	</head>
+	<body>
+	    <%=mon.getStats()%>
+	</body>
 </html>

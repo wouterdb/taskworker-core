@@ -30,8 +30,12 @@ import com.google.appengine.api.taskqueue.TaskOptions;
 import com.googlecode.objectify.Ref;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
+import com.googlecode.objectify.annotation.Ignore;
+import com.googlecode.objectify.annotation.Index;
 import com.googlecode.objectify.annotation.Load;
 import com.googlecode.objectify.annotation.Parent;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Workflow;
 import static drm.taskworker.Entities.ofy;
@@ -66,6 +70,8 @@ public abstract class AbstractTask implements Serializable {
 	 */
 	private String parentId = null;
 	@Load transient private Ref<AbstractTask> parentRef = null;
+
+	
 	
 	/**
 	 * Create a task for a worker
@@ -208,7 +214,7 @@ public abstract class AbstractTask implements Serializable {
 	/**
 	 * @param startedAt the startedAt to set
 	 */
-	public void setStartedAt(Date startedAt) {
+	private void setStartedAt(Date startedAt) {
 		this.startedAt = startedAt;
 	}
 	
@@ -223,13 +229,15 @@ public abstract class AbstractTask implements Serializable {
 	 * @return the finishedAt
 	 */
 	public Date getFinishedAt() {
+		
 		return finishedAt;
 	}
 
 	/**
 	 * @param finishedAt the finishedAt to set
 	 */
-	public void setFinishedAt(Date finishedAt) {
+	private void setFinishedAt(Date finishedAt) {
+	
 		this.finishedAt = finishedAt;
 	}
 	

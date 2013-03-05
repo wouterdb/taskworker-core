@@ -23,8 +23,11 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.yaml.snakeyaml.Yaml;
+
+import drm.taskworker.monitoring.OFYReporter;
 
 /**
  * The configuration of the workers
@@ -40,7 +43,6 @@ public class Config implements Serializable {
 	 * The default constructor for the configuration.
 	 */
 	private Config() {
-		
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })

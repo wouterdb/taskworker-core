@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
@@ -23,25 +23,28 @@ import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.ObjectifyFactory;
 import com.googlecode.objectify.ObjectifyService;
 
+import drm.taskworker.monitoring.Snapshot;
+import drm.taskworker.monitoring.Statistic;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.StartTask;
 import drm.taskworker.tasks.Task;
 
 public class Entities {
-    static {
-		ObjectifyService.register(Workflow.class);
-		ObjectifyService.register(AbstractTask.class);
-		ObjectifyService.register(Task.class);
-		ObjectifyService.register(StartTask.class);
-		ObjectifyService.register(EndTask.class);
-    }
+	static {
+		
+			ObjectifyService.register(Workflow.class);
+			ObjectifyService.register(AbstractTask.class);
+			ObjectifyService.register(Task.class);
+			ObjectifyService.register(StartTask.class);
+			ObjectifyService.register(EndTask.class);
+	}
 
-    public static Objectify ofy() {
-        return ObjectifyService.ofy();
-    }
+	public static Objectify ofy() {
+		return ObjectifyService.ofy();
+	}
 
-    public static ObjectifyFactory factory() {
-        return ObjectifyService.factory();
-    }
+	public static ObjectifyFactory factory() {
+		return ObjectifyService.factory();
+	}
 }

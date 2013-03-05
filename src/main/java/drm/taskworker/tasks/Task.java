@@ -19,11 +19,15 @@
 
 package drm.taskworker.tasks;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import com.googlecode.objectify.annotation.EntitySubclass;
+import com.googlecode.objectify.annotation.Ignore;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Workflow;
 
@@ -38,6 +42,7 @@ import drm.taskworker.Workflow;
 public class Task extends AbstractTask {
 	private Map<String,Object> params = new HashMap<String, Object>();
 
+	@Ignore private transient TimerContext timer;
 	/**
 	 * Create a task for a worker
 	 * 
@@ -104,6 +109,16 @@ public class Task extends AbstractTask {
 	@Override
 	public String getTaskType() {
 		return "work";
+	}
+	
+	public void setStartedAt() {
+		timer = Metrics.newTimer(getClass(), getWorker()).time();
+		super.setStartedAt();
+	}
+
+	public void setFinishedAt() {
+		timer.stop();
+		super.setFinishedAt();
 	}
 
 }

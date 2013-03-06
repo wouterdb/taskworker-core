@@ -26,10 +26,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import com.google.appengine.api.taskqueue.Queue;
-import com.google.appengine.api.taskqueue.QueueFactory;
 import com.google.appengine.api.taskqueue.TaskHandle;
 
+import drm.taskworker.queue.Queue;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
@@ -102,7 +101,7 @@ public abstract class Worker implements Runnable {
 		logger.info("Started worker " + this.toString());
 		while (this.working) {
 			try {
-				Queue q = QueueFactory.getQueue("pull-queue");
+				Queue q = new Queue("pull-queue");
 				List<TaskHandle> tasks = q.leaseTasksByTag(10,
 						TimeUnit.SECONDS, 1, this.name);
 				

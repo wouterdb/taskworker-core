@@ -23,13 +23,9 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.googlecode.objectify.annotation.Entity;
-import com.googlecode.objectify.annotation.Id;
-
-@Entity
 public class Snapshot {
 	
-	@Id private long timestamp;
+	private long timestamp;
 	private List<Statistic> stats = new LinkedList<Statistic>();
 	
 	@SuppressWarnings("unused")

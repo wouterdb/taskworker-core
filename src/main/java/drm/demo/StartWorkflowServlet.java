@@ -117,6 +117,7 @@ public class StartWorkflowServlet extends HttpServlet {
 			request.setAttribute("info", "Started workflow with id " + id);
 		}
 
+		request.setAttribute("workflows", this.getWorkflows());
 		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
 	

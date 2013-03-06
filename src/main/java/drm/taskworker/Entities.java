@@ -19,29 +19,62 @@
 
 package drm.taskworker;
 
-import com.googlecode.objectify.Objectify;
-import com.googlecode.objectify.ObjectifyFactory;
-import com.googlecode.objectify.ObjectifyService;
+import java.util.UUID;
 
-import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.EndTask;
-import drm.taskworker.tasks.StartTask;
-import drm.taskworker.tasks.Task;
+import com.netflix.astyanax.AstyanaxContext;
+import com.netflix.astyanax.Keyspace;
+import com.netflix.astyanax.connectionpool.NodeDiscoveryType;
+import com.netflix.astyanax.connectionpool.impl.ConnectionPoolConfigurationImpl;
+import com.netflix.astyanax.connectionpool.impl.CountingConnectionPoolMonitor;
+import com.netflix.astyanax.impl.AstyanaxConfigurationImpl;
+import com.netflix.astyanax.model.ColumnFamily;
+import com.netflix.astyanax.serializers.StringSerializer;
+import com.netflix.astyanax.serializers.UUIDSerializer;
+import com.netflix.astyanax.thrift.ThriftFamilyFactory;
+
 
 public class Entities {
-    static {
-		ObjectifyService.register(Workflow.class);
-		ObjectifyService.register(AbstractTask.class);
-		ObjectifyService.register(Task.class);
-		ObjectifyService.register(StartTask.class);
-		ObjectifyService.register(EndTask.class);
-    }
+	private static Keyspace cs = null;
+	
+	public static ColumnFamily<UUID, String> CQL3_CF = ColumnFamily.
+			newColumnFamily(
+					"Cql3CF", 
+					UUIDSerializer.get(), 
+					StringSerializer.get());
+	
+	public static ColumnFamily<String, String> CF_STANDARD1 = ColumnFamily
+            .newColumnFamily(
+                    "Standard1", 
+                    StringSerializer.get(),
+                    StringSerializer.get());
 
-    public static Objectify ofy() {
-        return ObjectifyService.ofy();
-    }
+	
+	private static Keyspace setupCassandra() {
+		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
+		    .forCluster("TestCluster")
+		    .forKeyspace("test")
+		    .withAstyanaxConfiguration(new AstyanaxConfigurationImpl()   
+		        .setDiscoveryType(NodeDiscoveryType.RING_DESCRIBE)
+		        .setCqlVersion("3.0.0")
+		        .setTargetCassandraVersion("1.2")
+		    )
+		    .withConnectionPoolConfiguration(new ConnectionPoolConfigurationImpl("MyConnectionPool")
+		        .setPort(9160)
+		        .setMaxConnsPerHost(1)
+		        .setSeeds("127.0.0.1:9160")
+		    )
+		    .withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
+		    .buildKeyspace(ThriftFamilyFactory.getInstance());
 
-    public static ObjectifyFactory factory() {
-        return ObjectifyService.factory();
-    }
+		context.start();
+		return context.getEntity();
+	}
+	
+	public static Keyspace cs() {
+		if (cs == null) {
+			cs = setupCassandra();
+		}
+		
+		return cs;
+	}
 }

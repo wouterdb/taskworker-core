@@ -77,10 +77,10 @@ public class TemplateWorker extends Worker {
 			template.merge(context, writer);
 			writer.flush();
 			
-			this.cacheService.put(task.getId(), writer.toString());
+			this.cacheService.put(task.getId().toString(), writer.toString());
 	
 			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
-			newTask.addParam("arg0", task.getId());
+			newTask.addParam("arg0", task.getId().toString());
 			result.addNextTask(newTask);
 			
 			result.setResult(TaskResult.Result.SUCCESS);

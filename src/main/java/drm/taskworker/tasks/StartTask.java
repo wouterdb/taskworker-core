@@ -19,8 +19,6 @@
 
 package drm.taskworker.tasks;
 
-import com.googlecode.objectify.annotation.EntitySubclass;
-
 import drm.taskworker.Workflow;
 
 /**
@@ -28,7 +26,6 @@ import drm.taskworker.Workflow;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@EntitySubclass(index=true)
 public class StartTask extends Task {
 	/**
 	 * Create a task that starts the workflow.

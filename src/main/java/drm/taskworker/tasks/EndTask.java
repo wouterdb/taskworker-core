@@ -19,7 +19,6 @@
 
 package drm.taskworker.tasks;
 
-import com.googlecode.objectify.annotation.EntitySubclass;
 
 
 
@@ -28,7 +27,6 @@ import com.googlecode.objectify.annotation.EntitySubclass;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@EntitySubclass(index=true)
 public class EndTask extends AbstractTask {
 	/**
 	 * Signal the end of a workflow to the next step in the workflow 

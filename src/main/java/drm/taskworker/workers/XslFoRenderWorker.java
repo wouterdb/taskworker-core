@@ -58,7 +58,7 @@ public class XslFoRenderWorker extends Worker {
 	public TaskResult work(Task task) {
 		TaskResult result = new TaskResult();
 		if (!task.hasParam("arg0") || !cacheService.contains(task.getParam("arg0"))) {
-			return result.setResult(TaskResult.Result.ERROR);
+			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
 
 		String invoice_source = (String)cacheService.get((String) task.getParam("arg0"));

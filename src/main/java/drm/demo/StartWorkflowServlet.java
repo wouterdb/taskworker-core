@@ -19,8 +19,6 @@
 
 package drm.demo;
 
-import static drm.taskworker.Entities.ofy;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +54,17 @@ public class StartWorkflowServlet extends HttpServlet {
 	public StartWorkflowServlet() {
 		super();
 	}
+	
+	private String[] getWorkflows() {
+		// load the configuration
+		Config cfg = Config.loadConfig(this.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml"));
+		String[] workflowNames = cfg.getWorkflows().keySet().toArray(new String[0]);
+		
+		return workflowNames;
+	}
+	
 
+	
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
@@ -64,12 +72,12 @@ public class StartWorkflowServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		// load the configuration
-		Config cfg = Config.loadConfig(this.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml"));
-		String[] workflowNames = cfg.getWorkflows().keySet().toArray(new String[0]);
-		request.setAttribute("workflows", workflowNames);
+		
+		request.setAttribute("workflows", this.getWorkflows());
 		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
+	
+	
 	
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
@@ -94,15 +102,15 @@ public class StartWorkflowServlet extends HttpServlet {
 		if (data != null) {
 			// create a workflow and save it
 			Workflow workflow = new Workflow(request.getParameter("workflow"));
-			ofy().save().entities(workflow);
+			workflow.save();
 						
 			StartTask task = workflow.newStartTask();
 			task.addParam("arg0", data);
 						
 			workflow.startNewWorkflow(task, true);
-			String id = workflow.getWorkflowId();
-					
-			ofy().save().entities(workflow);
+			String id = workflow.getWorkflowId().toString();
+				
+			workflow.save();
 			
 			request.setAttribute("workflowId", id);
 			
@@ -111,4 +119,6 @@ public class StartWorkflowServlet extends HttpServlet {
 
 		request.getRequestDispatcher("/start.jsp").forward(request, response);
 	}
+	
+
 }

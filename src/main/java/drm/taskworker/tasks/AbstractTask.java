@@ -19,6 +19,8 @@
 
 package drm.taskworker.tasks;
 
+import static drm.taskworker.Entities.cs;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -27,14 +29,15 @@ import java.util.Date;
 import java.util.UUID;
 
 import com.google.appengine.api.taskqueue.TaskOptions;
-import com.googlecode.objectify.Ref;
-import com.googlecode.objectify.annotation.Entity;
-import com.googlecode.objectify.annotation.Id;
-import com.googlecode.objectify.annotation.Load;
-import com.googlecode.objectify.annotation.Parent;
+import com.netflix.astyanax.Keyspace;
+import com.netflix.astyanax.connectionpool.OperationResult;
+import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.CqlResult;
+import com.netflix.astyanax.model.Row;
 
+import drm.taskworker.Entities;
 import drm.taskworker.Workflow;
-import static drm.taskworker.Entities.ofy;
 
 
 /**
@@ -42,9 +45,10 @@ import static drm.taskworker.Entities.ofy;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@Entity
 public abstract class AbstractTask implements Serializable {
-	@Id private String taskId = null;
+	public static final UUID NONE = UUID.fromString("00000000-0000-0000-0000-000000000000");
+	
+	private UUID taskId = null;
 	
 	private String worker = null;
 	private String symbolWorker = null;
@@ -52,20 +56,12 @@ public abstract class AbstractTask implements Serializable {
 	private Date startedAt = null;
 	private Date finishedAt = null;
 	
-	/*
-	 * The link to the workflowRef is transient because it is not possible to
-	 * serialize the ref when we place a task on the queue. To be able to 
-	 * restore this ref, we need to store the workflow id as well so we can
-	 * rebuild the ref.
-	 */
-	private String workflowId = null;
-	@Load @Parent transient private Ref<Workflow> workflowRef = null;
+	private UUID workflowId = null;
 	
 	/*
 	 * Same comment here as for workflow 
 	 */
-	private String parentId = null;
-	@Load transient private Ref<AbstractTask> parentRef = null;
+	private UUID parentId = NONE;
 	
 	/**
 	 * Create a task for a worker
@@ -77,17 +73,14 @@ public abstract class AbstractTask implements Serializable {
 	public AbstractTask(Workflow workflow, AbstractTask parentTask, String worker) {
 		this();
 		
-		this.workflowRef = Ref.create(workflow);
 		this.workflowId = workflow.getWorkflowId();
-		workflow.addTaskToHistory(this);
 		
 		this.setSymbolWorker(worker);
 		
 		// lookup the next worker
 		if (parentTask != null) {
-			this.parentRef = Ref.create(parentTask);
 			this.parentId = parentTask.getId();
-			this.worker = workflow.resolveStep(this.getParentTask().getWorker(), worker);
+			this.worker = workflow.resolveStep(parentTask.getWorker(), worker);
 		} else {
 			this.worker = worker;
 		}
@@ -97,13 +90,13 @@ public abstract class AbstractTask implements Serializable {
 	}
 	
 	public AbstractTask() {
-		this.taskId = UUID.randomUUID().toString();
+		this.taskId = UUID.randomUUID();
 	}
 	
 	/**
 	 * Get the id of this task.
 	 */
-	public String getId() {
+	public UUID getId() {
 		return this.taskId;
 	}
 	
@@ -111,15 +104,12 @@ public abstract class AbstractTask implements Serializable {
 	 * Get the parent of this task.
 	 */
 	public AbstractTask getParentTask() {
-		if (this.parentId == null) {
+		if (this.parentId == NONE) {
 			// this is a root node
 			return null;
 		}
 		
-		if (this.parentRef == null) {
-			this.parentRef = ofy().load().type(AbstractTask.class).parent(this.workflowRef).id(this.parentId);
-		}
-		return this.parentRef.safeGet();
+		return AbstractTask.load(this.parentId);
 	}
 	
 	/**
@@ -163,10 +153,8 @@ public abstract class AbstractTask implements Serializable {
 	 * Get the workflow this task belongs to.
 	 */
 	public Workflow getWorkflow() {
-		if (this.workflowRef == null) {
-			this.workflowRef = ofy().load().type(Workflow.class).id(this.workflowId);
-		}
-		Workflow wf = this.workflowRef.safeGet();
+		Workflow wf = Workflow.load(this.workflowId);
+		assert(wf != null);
 		return wf;
 	}
 
@@ -204,19 +192,19 @@ public abstract class AbstractTask implements Serializable {
 	public Date getStartedAt() {
 		return startedAt;
 	}
-
-	/**
-	 * @param startedAt the startedAt to set
-	 */
-	public void setStartedAt(Date startedAt) {
-		this.startedAt = startedAt;
-	}
 	
 	/**
 	 * Set the start date to now.
 	 */
 	public void setStartedAt() {
-		this.setStartedAt(new Date());
+		this.startedAt = new Date();
+	}
+	
+	/**
+	 * Set the start date to now.
+	 */
+	public void setStartedAt(Date date) {
+		this.startedAt = date;
 	}
 
 	/**
@@ -225,25 +213,124 @@ public abstract class AbstractTask implements Serializable {
 	public Date getFinishedAt() {
 		return finishedAt;
 	}
-
-	/**
-	 * @param finishedAt the finishedAt to set
-	 */
-	public void setFinishedAt(Date finishedAt) {
-		this.finishedAt = finishedAt;
-	}
 	
 	/**
 	 * Set the finished date to now
 	 */
 	public void setFinishedAt() {
-		this.setFinishedAt(new Date());
+		this.finishedAt = new Date();
 	}
 	
 	/**
-	 * Save the task to the datastore.
+	 * Set the finished date to now
+	 */
+	public void setFinishedAt(Date date) {
+		this.finishedAt = date;
+	}
+	
+	
+	/**
+	 * Save the task to the datastore 
 	 */
 	public void save() {
-		ofy().save().entity(this);
+		/* CREATE TABLE task (
+		  id uuid PRIMARY KEY,
+		  created_at uuid,
+		  finished_at uuid,
+		  parent_id uuid,
+		  started_at uuid,
+		  type text,
+		  worker_name text,
+		  workflow_id uuid
+		)*/
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("INSERT INTO task (id, created_at, parent_id, type, worker_name, workflow_id) " + 
+							 " VALUES (?, ?, ?, ?, ?, ?);")
+					.asPreparedStatement()
+		            .withUUIDValue(this.getId())					// id
+		            .withLongValue(this.createdAt.getTime())		// created_at
+		            .withUUIDValue(this.parentId)					// parent_id
+		            .withStringValue(this.getTaskType())			// type
+		            .withStringValue(this.getWorker())				// worker_name
+		            .withUUIDValue(this.workflowId)					// workflow_id
+		            .execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Is this task finished?
+	 */
+	public boolean isFinshed() {
+		return this.getFinishedAt() != null;
+	}
+	
+	/**
+	 * Load a task from the database 
+	 */
+	public static AbstractTask load(UUID id) {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM task WHERE id = ?;")
+				.asPreparedStatement()
+				.withUUIDValue(id)
+				.execute();
+			
+			for (Row<String, String> row : result.getResult().getRows()) {
+			    ColumnList<String> columns = row.getColumns();
+			    
+			    AbstractTask task = null;
+			    String taskType = columns.getStringValue("type", "task");
+			    if (taskType == "work") {
+			    	task = new Task();
+			    } else if (taskType == "end") {
+			    	task = new EndTask();
+			    } else if (taskType == "start") {
+			    	task = new StartTask();
+			    }
+			    
+			    task.taskId = columns.getUUIDValue("id", null);
+			    
+			    task.createdAt = new Date(columns.getLongValue("created_at", 0L));
+			    task.startedAt = new Date(columns.getLongValue("finished_at", 0L));
+			    if (task.startedAt.getTime() == 0) {
+			    	task.startedAt = null;
+			    }
+			    task.finishedAt = new Date(columns.getLongValue("started_at", 0L));
+			    if (task.finishedAt.getTime() == 0) {
+			    	task.finishedAt = null;
+			    }
+			    
+			    task.parentId = columns.getUUIDValue("parent_id", null);
+			    task.workflowId = columns.getUUIDValue("workflow_id", null);
+			    
+			    task.worker = columns.getStringValue("worker_name", null);
+			    
+			    return task;
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * Save the start and finish timings
+	 */
+	public void saveTiming() {
+		try {
+			Keyspace cs = cs();
+			cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE task SET started_at = ?, finished_at = ? WHERE id = ?;")
+					.asPreparedStatement()
+					.withLongValue(this.startedAt.getTime())		// started_at
+					.withLongValue(this.finishedAt.getTime())		// finished_at
+		            .withUUIDValue(this.getId())					// id
+		            .execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
 	}
 }

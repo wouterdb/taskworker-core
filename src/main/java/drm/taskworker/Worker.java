@@ -128,14 +128,20 @@ public abstract class Worker implements Runnable {
 					task.setStartedAt();
 					if (task.getTaskType() == "work" || task.getTaskType() == "start") {
 						result = this.work((Task) task);
+						
 					} else if (task.getTaskType() == "end") {
-						result = this.work((EndTask) task);
+						/*
+						 * This is an end task. If we get this task, we need to
+						 * ensure that all other tasks of this workflow have
+						 * been finished.
+						 */
+							result = this.work((EndTask) task);
 					} else {
 						logger.warning("Task type " + task.getTaskType() + " not known.");
 						continue;
 					}
 					task.setFinishedAt();
-					task.save();
+					task.saveTiming();
 
 					if (result == null) {
 						logger.warning("Worker returns null. Ouch ...");

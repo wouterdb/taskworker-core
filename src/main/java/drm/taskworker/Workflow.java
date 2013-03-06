@@ -15,24 +15,25 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
-import static drm.taskworker.Entities.ofy;
+import static drm.taskworker.Entities.cs;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+import com.google.appengine.api.datastore.QueryResultIterable;
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
-import com.googlecode.objectify.annotation.Entity;
-import com.googlecode.objectify.annotation.Id;
-import com.googlecode.objectify.annotation.Ignore;
+import com.netflix.astyanax.connectionpool.OperationResult;
+import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.CqlResult;
+import com.netflix.astyanax.model.Row;
 
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.AbstractTask;
@@ -42,35 +43,33 @@ import drm.taskworker.tasks.Task;
 
 /**
  * This class manages a workflow
- *
+ * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@Entity
 public class Workflow implements Serializable {
 	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
-	@Ignore private drm.taskworker.config.WorkflowConfig workflowConfig = null;
-	
+	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
+
 	private String name = null;
-	@Id private String workflowId = null;
-	
-	@Ignore private List<AbstractTask> historyList = new ArrayList<AbstractTask>();
-	
+	private UUID workflowId = null;
+
 	/**
 	 * Create a new workflow instance
 	 * 
-	 * @param name The name of the workflow to start an instance of
+	 * @param name
+	 *            The name of the workflow to start an instance of
 	 */
 	public Workflow(String name) {
 		this();
 		this.setName(name);
 		this.loadConfig();
 	}
-	
+
 	/**
 	 * Default constructor, that only sets a UUID
 	 */
 	public Workflow() {
-		this.workflowId = UUID.randomUUID().toString();
+		this.workflowId = UUID.randomUUID();
 	}
 
 	/**
@@ -82,8 +81,8 @@ public class Workflow implements Serializable {
 	}
 
 	/**
-	 * The name of the workflow. This name is a type of workflow, an instance
-	 * of this workflow is identified with the workflowId
+	 * The name of the workflow. This name is a type of workflow, an instance of
+	 * this workflow is identified with the workflowId
 	 * 
 	 * @return the name
 	 */
@@ -92,31 +91,35 @@ public class Workflow implements Serializable {
 	}
 
 	/**
-	 * @param name the name to set
+	 * @param name
+	 *            the name to set
 	 */
 	public void setName(String name) {
 		this.name = name;
 	}
-	
+
 	/**
 	 * Resolve a symbolic next step for the given current step. If the next
-	 * symbol is not defined, the next symbol parameter itself will be returned. 
+	 * symbol is not defined, the next symbol parameter itself will be returned.
 	 * 
-	 * @param stepName The step to lookup the next step for
-	 * @param nextSymbol The next symbol that needs to be resolved.
+	 * @param stepName
+	 *            The step to lookup the next step for
+	 * @param nextSymbol
+	 *            The next symbol that needs to be resolved.
 	 * @return The actual next step.
 	 */
 	public String resolveStep(String stepName, String nextSymbol) {
 		return this.getWorkflowConfig().getNextStep(stepName, nextSymbol);
 	}
-	
+
 	/**
 	 * Start a new workflow
 	 * 
 	 * @param task
 	 * @return
 	 */
-	public void startNewWorkflow(StartTask task, boolean end) throws IOException {
+	public void startNewWorkflow(StartTask task, boolean end)
+			throws IOException {
 		this.queueTask(task);
 
 		if (end) {
@@ -124,20 +127,21 @@ public class Workflow implements Serializable {
 			EndTask endTask = new EndTask(task, task.getWorker());
 			this.queueTask(endTask);
 		}
-		
+
 		logger.info("Started workflow. Added task for " + task.getWorker());
 	}
-	
+
 	/**
 	 * Get a new task in this workflow
 	 * 
-	 * @param worker The work on which this task should be allocated.
-	 * @return A new task that can be added to the queue 
+	 * @param worker
+	 *            The work on which this task should be allocated.
+	 * @return A new task that can be added to the queue
 	 */
 	public Task newTask(Task parent, String worker) {
 		return new Task(parent, worker);
 	}
-	
+
 	/**
 	 * The string representation of this workflow.
 	 */
@@ -145,12 +149,13 @@ public class Workflow implements Serializable {
 	public String toString() {
 		return "workflow-" + this.workflowId;
 	}
-	
+
 	/**
 	 * Get the unique id of this workflow.
+	 * 
 	 * @return
 	 */
-	public String getWorkflowId() {
+	public UUID getWorkflowId() {
 		return this.workflowId;
 	}
 
@@ -160,15 +165,15 @@ public class Workflow implements Serializable {
 	public StartTask newStartTask() {
 		return new StartTask(this, this.getWorkflowConfig().getWorkflowStart());
 	}
-	
+
 	/**
 	 * Add a new task to the queue
 	 */
 	public void queueTask(AbstractTask task) {
 		try {
 			// persist the task
-			ofy().save().entities(task);
-			
+			task.save();
+
 			// add it to the queue
 			Queue q = QueueFactory.getQueue("pull-queue");
 			q.add(task.toTaskOption());
@@ -188,44 +193,59 @@ public class Workflow implements Serializable {
 	}
 
 	/**
-	 * @param workflowConfig the workflowConfig to set
+	 * @param workflowConfig
+	 *            the workflowConfig to set
 	 */
-	private void setWorkflowConfig(drm.taskworker.config.WorkflowConfig workflowConfig) {
+	private void setWorkflowConfig(
+			drm.taskworker.config.WorkflowConfig workflowConfig) {
 		this.workflowConfig = workflowConfig;
-	}
-	
-	/**
-	 * Add a new task to the workflow
-	 * 
-	 * @param task The task to add to the history of the workflow.
-	 */
-	public void addTaskToHistory(AbstractTask task) {
-		// make sure the list of tasks is loaded again
-		this.getHistory();
-		
-		// then add it
-		this.historyList.add(task);
 	}
 
 	/**
 	 * Save the workflow to the datastore
 	 */
 	public void save() {
-		// save the workflow
-		ofy().save().entity(this);
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("INSERT INTO workflow (id, workflow_name) VALUES (?, ?);")
+					.asPreparedStatement()
+		            .withUUIDValue(this.workflowId)
+		            .withStringValue(this.name)
+		            .execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
 	}
 	
+	public static Workflow load(UUID id) {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT id, workflow_name FROM workflow;").execute();// WHERE id = " + id + ";").execute();
+				//.asPreparedStatement()
+				//.withUUIDValue(id)
+				//.execute();
+			
+			for (Row<String, String> row : result.getResult().getRows()) {
+			    ColumnList<String> columns = row.getColumns();
+			    
+			    Workflow wf = new Workflow();
+			    wf.workflowId = columns.getUUIDValue("id", null);
+			    wf.name = columns.getStringValue("workflow_name", null);
+			    
+			    return wf;
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
 	/**
 	 * Get the history of the workflow.
 	 */
-	public List<AbstractTask> getHistory() {
-		if (this.historyList.size() == 0) {
-			// load it from the datastore
-			for (AbstractTask task : ofy().load().type(AbstractTask.class).ancestor(this).iterable()) {
-				this.historyList.add(task);
-			}
-		}
-		return this.historyList;
+	public QueryResultIterable<AbstractTask> getHistory() {
+//		return ofy().load().type(AbstractTask.class).ancestor(this).iterable();
+		return null;
 	}
 
 }

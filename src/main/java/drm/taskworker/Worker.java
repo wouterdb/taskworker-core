@@ -99,6 +99,9 @@ public abstract class Worker implements Runnable {
 	@Override
 	public void run() {
 		logger.info("Started worker " + this.toString());
+		
+		Service svc = Service.get();
+		
 		while (this.working) {
 			try {
 				Queue q = new Queue("pull-queue");
@@ -150,8 +153,7 @@ public abstract class Worker implements Runnable {
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						for (AbstractTask newTask : result.getNextTasks()) {
 							
-							newTask.getWorkflow().queueTask(newTask);
-							
+							svc.queueTask(newTask);
 							logger.info("New task for " + newTask.getWorker()
 									+ " on worker " + this.name);
 						}

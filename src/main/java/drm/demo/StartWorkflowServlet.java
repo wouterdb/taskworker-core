@@ -33,6 +33,7 @@ import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
 
+import drm.taskworker.Service;
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.WorkflowInstance;
@@ -102,19 +103,15 @@ public class StartWorkflowServlet extends HttpServlet {
 		if (data != null) {
 			// create a workflow and save it
 			WorkflowInstance workflow = new WorkflowInstance(request.getParameter("workflow"));
-			workflow.save();
-						
 			Task task = workflow.newStartTask();
 			task.addParam("arg0", data);
 						
-			workflow.startNewWorkflow(task, true);
+			Service.get().startWorkflow(workflow, task);
 			String id = workflow.getWorkflowId().toString();
 				
-			workflow.save();
-			
 			request.setAttribute("workflowId", id);
 			
-			request.setAttribute("info", "Started workflow with id " + id);
+			request.setAttribute("info", "Started workflow with id <a href=\"/workflow?workflowId=" + id + "\">" + id + "</a>");
 		}
 
 		request.setAttribute("workflows", this.getWorkflows());

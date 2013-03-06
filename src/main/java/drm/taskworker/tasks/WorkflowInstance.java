@@ -117,25 +117,6 @@ public class WorkflowInstance implements Serializable {
 	}
 
 	/**
-	 * Start a new workflow
-	 * 
-	 * @param task
-	 * @return
-	 */
-	public void startNewWorkflow(Task task, boolean end)
-			throws IOException {
-		this.queueTask(task);
-
-		if (end) {
-			// send end of workflow as the last task
-			EndTask endTask = new EndTask(task, task.getWorker());
-			this.queueTask(endTask);
-		}
-
-		logger.info("Started workflow. Added task for " + task.getWorker());
-	}
-
-	/**
 	 * Get a new task in this workflow
 	 * 
 	 * @param worker
@@ -168,22 +149,6 @@ public class WorkflowInstance implements Serializable {
 	 */
 	public Task newStartTask() {
 		return new Task(this, this.getWorkflowConfig().getWorkflowStart());
-	}
-
-	/**
-	 * Add a new task to the queue
-	 */
-	public void queueTask(AbstractTask task) {
-		try {
-			// persist the task
-			task.save();
-
-			// add it to the queue
-			Queue q = QueueFactory.getQueue("pull-queue");
-			q.add(task.toTaskOption());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**

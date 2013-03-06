@@ -67,22 +67,19 @@ public class ZipWorker extends Worker {
 		// get the list of files to put in the zip, if it does not exist yet
 		// create it.
 		String zipKey = "workflow-files-" + task.getWorkflowId();
-		List<byte[]> zipList = null;
+		List<String> zipList = null;
 		if (this.cacheService.contains(zipKey)) {
-			zipList = (List<byte[]>)this.cacheService.get(zipKey);
+			zipList = (List<String>)this.cacheService.get(zipKey);
 		} else {
-			zipList = new ArrayList<byte[]>();
+			zipList = new ArrayList<String>();
 		}
 		
 		// get the file that is sent to this worker
-		byte[] fileData = (byte[])this.cacheService.get(task.getParam("arg0"));
-		zipList.add(fileData);
+		String fileKey = (String)task.getParam("arg0");
+		zipList.add(fileKey);
 		
 		// save the list again
 		this.cacheService.put(zipKey, zipList);
-		
-		// delete the file from the cache
-		this.cacheService.delete(task.getParam("arg0"));
 
 		result.setResult(TaskResult.Result.SUCCESS);
 		return result;
@@ -98,13 +95,13 @@ public class ZipWorker extends Worker {
 		
 		try {
 			// get all zip files
-			String zipKey = "workflow-files-" + task.getWorkflow().getWorkflowId();
-			List<byte[]> zipList = null;
+			String zipKey = "workflow-files-" + task.getWorkflowId();
+			List<String> zipList = null;
 			if (!this.cacheService.contains(zipKey)) {
 				logger.warning("empty zip file");
-				zipList = new ArrayList<byte[]>();
+				zipList = new ArrayList<String>();
 			} else {
-				zipList = (List<byte[]>)this.cacheService.get(zipKey);
+				zipList = (List<String>)this.cacheService.get(zipKey);
 			}
 			
 			// create the zip stream
@@ -113,9 +110,13 @@ public class ZipWorker extends Worker {
 
 			// save the files in the zip
 			int i = 0;
-			for (byte[] fileData : zipList) {
+			for (String fileKey : zipList) {
 				out.putNextEntry(new ZipEntry(++i + ".pdf"));
-				out.write(fileData);
+				byte[] pdfData = (byte[])this.cacheService.get(fileKey);
+				out.write(pdfData);
+				
+				// delete the file from the cache
+				this.cacheService.delete(fileKey);
 			}
 			out.close();
 			boas.flush();

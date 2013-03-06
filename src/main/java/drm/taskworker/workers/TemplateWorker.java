@@ -79,7 +79,7 @@ public class TemplateWorker extends Worker {
 			
 			this.cacheService.put(task.getId().toString(), writer.toString());
 	
-			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+			Task newTask = new Task(task, this.getNextWorker());
 			newTask.addParam("arg0", task.getId().toString());
 			result.addNextTask(newTask);
 			

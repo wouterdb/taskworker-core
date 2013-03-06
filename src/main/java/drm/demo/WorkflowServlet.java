@@ -34,7 +34,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.Workflow;
+import drm.taskworker.tasks.WorkflowInstance;
 
 /**
  * Servlet implementation class Workflow
@@ -56,10 +56,10 @@ public class WorkflowServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		Workflow workflow = null;
+		WorkflowInstance workflow = null;
 
-		List<drm.taskworker.tasks.Workflow> workflows = new ArrayList<drm.taskworker.tasks.Workflow>();
-		for (drm.taskworker.tasks.Workflow wf : Workflow.getAll()) {
+		List<drm.taskworker.tasks.WorkflowInstance> workflows = new ArrayList<drm.taskworker.tasks.WorkflowInstance>();
+		for (drm.taskworker.tasks.WorkflowInstance wf : WorkflowInstance.getAll()) {
 			workflows.add(wf);
 		}
 
@@ -70,7 +70,7 @@ public class WorkflowServlet extends HttpServlet {
 		
 		if (request.getParameter("workflowId") != null) {
 			// load the workflow
-			workflow = Workflow.load(UUID.fromString(request.getParameter("workflowId")));
+			workflow = WorkflowInstance.load(UUID.fromString(request.getParameter("workflowId")));
 		
 			// create a graph
 

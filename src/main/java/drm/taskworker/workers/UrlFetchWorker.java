@@ -63,7 +63,7 @@ public class UrlFetchWorker extends Worker {
 	        }
 	        reader.close();
 	        
-	        Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+	        Task newTask = new Task(task, this.getNextWorker());
 	        newTask.addParam("arg0", webPage.toString());
 	        
 	        result.addNextTask(newTask);

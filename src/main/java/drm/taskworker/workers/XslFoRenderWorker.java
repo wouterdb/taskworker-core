@@ -93,7 +93,7 @@ public class XslFoRenderWorker extends Worker {
 			String cacheKey = UUID.randomUUID().toString();
 			this.cacheService.put(cacheKey, boas.toByteArray());
 
-			Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+			Task newTask = new Task(task, this.getNextWorker());
 			newTask.addParam("arg0", cacheKey);
 			result.addNextTask(newTask);
 			result.setResult(TaskResult.Result.SUCCESS);

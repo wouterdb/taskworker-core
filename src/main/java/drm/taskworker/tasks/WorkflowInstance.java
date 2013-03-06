@@ -24,6 +24,7 @@ import static drm.taskworker.Entities.cs;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -46,12 +47,15 @@ import drm.taskworker.config.WorkflowConfig;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class Workflow implements Serializable {
+public class WorkflowInstance implements Serializable {
 	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
 	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
 
 	private String name = null;
 	private UUID workflowId = null;
+	
+	private Date startAt = null;
+	private Date deadline = null;
 
 	/**
 	 * Create a new workflow instance
@@ -59,7 +63,7 @@ public class Workflow implements Serializable {
 	 * @param name
 	 *            The name of the workflow to start an instance of
 	 */
-	public Workflow(String name) {
+	public WorkflowInstance(String name) {
 		this();
 		this.setName(name);
 		this.loadConfig();
@@ -68,7 +72,7 @@ public class Workflow implements Serializable {
 	/**
 	 * Default constructor, that only sets a UUID
 	 */
-	public Workflow() {
+	public WorkflowInstance() {
 		this.workflowId = UUID.randomUUID();
 	}
 
@@ -185,7 +189,7 @@ public class Workflow implements Serializable {
 	/**
 	 * @return the workflowConfig
 	 */
-	public drm.taskworker.config.WorkflowConfig getWorkflowConfig() {
+	public WorkflowConfig getWorkflowConfig() {
 		if (this.workflowConfig == null) {
 			this.loadConfig();
 		}
@@ -219,7 +223,7 @@ public class Workflow implements Serializable {
 	/**
 	 * Load a workflow from the database
 	 */
-	public static Workflow load(UUID id) {
+	public static WorkflowInstance load(UUID id) {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
 				.withCql("SELECT id, workflow_name FROM workflow;").execute();
@@ -227,7 +231,7 @@ public class Workflow implements Serializable {
 			for (Row<String, String> row : result.getResult().getRows()) {
 			    ColumnList<String> columns = row.getColumns();
 			    
-			    Workflow wf = new Workflow();
+			    WorkflowInstance wf = new WorkflowInstance();
 			    wf.workflowId = columns.getUUIDValue("id", null);
 			    wf.name = columns.getStringValue("workflow_name", null);
 			    
@@ -265,18 +269,18 @@ public class Workflow implements Serializable {
 	/**
 	 * Get all workflows 
 	 */
-	public static List<Workflow> getAll() {
+	public static List<WorkflowInstance> getAll() {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
 					.withCql("SELECT * FROM workflow;")
 					.asPreparedStatement()
 					.execute();
 			
-			List<Workflow> workflows = new ArrayList<>();
+			List<WorkflowInstance> workflows = new ArrayList<>();
 			for (Row<String, String> row : result.getResult().getRows()) {
 			    ColumnList<String> columns = row.getColumns();
 			    
-			    Workflow wf = new Workflow();
+			    WorkflowInstance wf = new WorkflowInstance();
 			    wf.workflowId = columns.getUUIDValue("id", null);
 			    wf.name = columns.getStringValue("workflow_name", null);
 			    

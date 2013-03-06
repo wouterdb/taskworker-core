@@ -82,7 +82,7 @@ public class BlobWorker extends Worker {
 			return result.setResult(TaskResult.Result.ERROR);
 		}
 
-		Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+		Task newTask = new Task(task, this.getNextWorker());
 		newTask.addParam("arg0", blobKey.getKeyString());
 
 		result.addNextTask(newTask);

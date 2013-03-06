@@ -70,7 +70,7 @@ public class ExtractUrlWorker extends Worker {
 			String href = el.attr("href");
 			System.err.println(href);
 			if (href.startsWith("http://") && !this.cacheService.contains(href)) {
-				Task newTask = task.getWorkflow().newTask(task, this.getNextWorker());
+				Task newTask = new Task(task, this.getNextWorker());
 				newTask.addParam("arg0", href);
 		        result.addNextTask(newTask);
 			}

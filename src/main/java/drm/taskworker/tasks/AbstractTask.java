@@ -69,12 +69,10 @@ public abstract class AbstractTask implements Serializable {
 	 * @param parent The parent of this task
 	 * @param worker The name of the worker
 	 */
-	public AbstractTask(Workflow workflow, AbstractTask parentTask, String worker) {
+	public AbstractTask(WorkflowInstance workflow, AbstractTask parentTask, String worker) {
 		this();
 		
-		this.workflowId = workflow.getWorkflowId();
-		
-		this.setSymbolWorker(worker);
+		this.setWorkflowId(workflow.getWorkflowId());
 		
 		// lookup the next worker
 		if (parentTask != null) {
@@ -108,7 +106,7 @@ public abstract class AbstractTask implements Serializable {
 			return null;
 		}
 		
-		return AbstractTask.load(this.workflowId, this.parentId);
+		return AbstractTask.load(this.getWorkflowId(), this.parentId);
 	}
 	
 	/**
@@ -151,24 +149,10 @@ public abstract class AbstractTask implements Serializable {
 	/**
 	 * Get the workflow this task belongs to.
 	 */
-	public Workflow getWorkflow() {
-		Workflow wf = Workflow.load(this.workflowId);
+	public WorkflowInstance getWorkflow() {
+		WorkflowInstance wf = WorkflowInstance.load(this.getWorkflowId());
 		assert(wf != null);
 		return wf;
-	}
-
-	/**
-	 * @return the symbolWorker
-	 */
-	public String getSymbolWorker() {
-		return symbolWorker;
-	}
-
-	/**
-	 * @param symbolWorker the symbolWorker to set
-	 */
-	private void setSymbolWorker(String symbolWorker) {
-		this.symbolWorker = symbolWorker;
 	}
 
 	/**
@@ -239,7 +223,7 @@ public abstract class AbstractTask implements Serializable {
 		            .withUUIDValue(this.parentId)					// parent_id
 		            .withStringValue(this.getTaskType())			// type
 		            .withStringValue(this.getWorker())				// worker_name
-		            .withUUIDValue(this.workflowId)					// workflow_id
+		            .withUUIDValue(this.getWorkflowId())					// workflow_id
 		            .execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
@@ -298,7 +282,7 @@ public abstract class AbstractTask implements Serializable {
 		}
 		
 		task.parentId = columns.getUUIDValue("parent_id", null);
-		task.workflowId = columns.getUUIDValue("workflow_id", null);
+		task.setWorkflowId(columns.getUUIDValue("workflow_id", null));
 		
 		task.worker = columns.getStringValue("worker_name", null);
 		
@@ -316,11 +300,25 @@ public abstract class AbstractTask implements Serializable {
 					.asPreparedStatement()
 					.withLongValue(this.startedAt.getTime())		// started_at
 					.withLongValue(this.finishedAt.getTime())		// finished_at
-					.withUUIDValue(this.workflowId) 				// workflow_id
+					.withUUIDValue(this.getWorkflowId()) 				// workflow_id
 		            .withUUIDValue(this.getId())					// id
 		            .execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * @return the workflowId
+	 */
+	public UUID getWorkflowId() {
+		return workflowId;
+	}
+
+	/**
+	 * @param workflowId the workflowId to set
+	 */
+	private void setWorkflowId(UUID workflowId) {
+		this.workflowId = workflowId;
 	}
 }

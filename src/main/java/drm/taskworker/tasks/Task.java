@@ -64,7 +64,7 @@ public class Task extends AbstractTask {
 	 * @param workflow
 	 * @param worker
 	 */
-	public Task(Workflow workflow, String worker) {
+	public Task(WorkflowInstance workflow, String worker) {
 		this(workflow, null, worker);
 	}
 	
@@ -74,7 +74,7 @@ public class Task extends AbstractTask {
 	 * @param parent The parent of this task
 	 * @param worker The name of the worker
 	 */
-	protected Task(Workflow workflow, AbstractTask parent, String worker) {
+	protected Task(WorkflowInstance workflow, AbstractTask parent, String worker) {
 		super(workflow, parent, worker);
 	}
 	

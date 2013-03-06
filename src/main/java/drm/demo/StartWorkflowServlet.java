@@ -35,7 +35,7 @@ import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
 
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.Task;
-import drm.taskworker.tasks.Workflow;
+import drm.taskworker.tasks.WorkflowInstance;
 // import this here so entities are always loaded
 
 /**
@@ -101,7 +101,7 @@ public class StartWorkflowServlet extends HttpServlet {
 		}
 		if (data != null) {
 			// create a workflow and save it
-			Workflow workflow = new Workflow(request.getParameter("workflow"));
+			WorkflowInstance workflow = new WorkflowInstance(request.getParameter("workflow"));
 			workflow.save();
 						
 			Task task = workflow.newStartTask();

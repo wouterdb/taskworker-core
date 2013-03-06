@@ -29,7 +29,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import drm.taskworker.tasks.Workflow;
+import drm.taskworker.tasks.WorkflowInstance;
 
 /**
  * Servlet implementation class Workflow
@@ -52,8 +52,8 @@ public class MonitorServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 
-		List<drm.taskworker.tasks.Workflow> workflows = new ArrayList<drm.taskworker.tasks.Workflow>();
-		for (drm.taskworker.tasks.Workflow wf : Workflow.getAll()) {
+		List<drm.taskworker.tasks.WorkflowInstance> workflows = new ArrayList<drm.taskworker.tasks.WorkflowInstance>();
+		for (drm.taskworker.tasks.WorkflowInstance wf : WorkflowInstance.getAll()) {
 			workflows.add(wf);
 		}
 

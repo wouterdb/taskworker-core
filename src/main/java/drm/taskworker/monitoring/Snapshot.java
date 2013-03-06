@@ -28,7 +28,6 @@ public class Snapshot {
 	private long timestamp;
 	private List<Statistic> stats = new LinkedList<Statistic>();
 	
-	@SuppressWarnings("unused")
 	private Snapshot(){}
 	
 	public Snapshot(Date timestamp) {

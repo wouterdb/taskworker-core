@@ -101,7 +101,6 @@ public class Queue {
     	tasks.put(task.getName(), task);
     }
     
-    //--
     public List<TaskHandle> leaseTasksByTag(long lease, TimeUnit unit, long countLimit, String tag) {
     	long leaseMillis = unit.toMillis(lease);
         long now = System.currentTimeMillis();

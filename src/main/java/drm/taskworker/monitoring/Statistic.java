@@ -29,7 +29,6 @@ public class Statistic {
 	private double sdtDev;
 	private long samples;
 	
-	@SuppressWarnings("unused")
 	private Statistic(){}
 
 	public Statistic(String name, double average, double sdtDev, long samples) {

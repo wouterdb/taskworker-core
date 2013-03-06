@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
@@ -31,7 +31,6 @@ import com.netflix.astyanax.model.ColumnFamily;
 import com.netflix.astyanax.serializers.StringSerializer;
 import com.netflix.astyanax.serializers.UUIDSerializer;
 import com.netflix.astyanax.thrift.ThriftFamilyFactory;
-
 
 public class Entities {
 	private static Keyspace cs = null;

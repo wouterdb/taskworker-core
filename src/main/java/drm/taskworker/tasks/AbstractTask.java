@@ -200,17 +200,12 @@ public abstract class AbstractTask implements Serializable {
 		this.startedAt = new Date();
 	}
 	
-	/**
-	 * Set the start date to now.
-	 */
-	public void setStartedAt(Date date) {
-		this.startedAt = date;
-	}
 
 	/**
 	 * @return the finishedAt
 	 */
 	public Date getFinishedAt() {
+		
 		return finishedAt;
 	}
 	
@@ -220,14 +215,6 @@ public abstract class AbstractTask implements Serializable {
 	public void setFinishedAt() {
 		this.finishedAt = new Date();
 	}
-	
-	/**
-	 * Set the finished date to now
-	 */
-	public void setFinishedAt(Date date) {
-		this.finishedAt = date;
-	}
-	
 	
 	/**
 	 * Save the task to the datastore 

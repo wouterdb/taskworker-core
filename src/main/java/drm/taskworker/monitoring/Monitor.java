@@ -19,12 +19,9 @@
  */
 package drm.taskworker.monitoring;
 
-import static drm.taskworker.Entities.ofy;
-
-import java.util.Date;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

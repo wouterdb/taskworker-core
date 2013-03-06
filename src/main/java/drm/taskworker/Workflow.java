@@ -23,10 +23,11 @@ import static drm.taskworker.Entities.cs;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-import com.google.appengine.api.datastore.QueryResultIterable;
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
 import com.netflix.astyanax.connectionpool.OperationResult;
@@ -217,13 +218,13 @@ public class Workflow implements Serializable {
 		}
 	}
 	
+	/**
+	 * Load a workflow from the database
+	 */
 	public static Workflow load(UUID id) {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT id, workflow_name FROM workflow;").execute();// WHERE id = " + id + ";").execute();
-				//.asPreparedStatement()
-				//.withUUIDValue(id)
-				//.execute();
+				.withCql("SELECT id, workflow_name FROM workflow;").execute();
 			
 			for (Row<String, String> row : result.getResult().getRows()) {
 			    ColumnList<String> columns = row.getColumns();
@@ -243,9 +244,51 @@ public class Workflow implements Serializable {
 	/**
 	 * Get the history of the workflow.
 	 */
-	public QueryResultIterable<AbstractTask> getHistory() {
-//		return ofy().load().type(AbstractTask.class).ancestor(this).iterable();
+	public List<AbstractTask> getHistory() {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM task WHERE workflow_id = ?;")
+					.asPreparedStatement()
+					.withUUIDValue(this.workflowId)
+					.execute();
+			
+			List<AbstractTask> tasks = new ArrayList<>();
+			for (Row<String, String> row : result.getResult().getRows()) {
+				tasks.add(AbstractTask.createTaskFromDB(row));
+			}
+			
+			return tasks;
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
-
+	
+	/**
+	 * Get all workflows 
+	 */
+	public static List<Workflow> getAll() {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM workflow;")
+					.asPreparedStatement()
+					.execute();
+			
+			List<Workflow> workflows = new ArrayList<>();
+			for (Row<String, String> row : result.getResult().getRows()) {
+			    ColumnList<String> columns = row.getColumns();
+			    
+			    Workflow wf = new Workflow();
+			    wf.workflowId = columns.getUUIDValue("id", null);
+			    wf.name = columns.getStringValue("workflow_name", null);
+			    
+			    workflows.add(wf);
+			}
+			
+			return workflows;
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

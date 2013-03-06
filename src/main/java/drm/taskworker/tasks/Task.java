@@ -26,10 +26,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
-import com.netflix.astyanax.query.PreparedCqlQuery;
 import com.netflix.astyanax.serializers.ObjectSerializer;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Entities;
 import drm.taskworker.Workflow;
@@ -43,8 +43,8 @@ import drm.taskworker.Workflow;
  */
 public class Task extends AbstractTask {
 	private Map<String,Object> params = new HashMap<String, Object>();
+	private transient TimerContext timer;
 
-	@Ignore private transient TimerContext timer;
 	/**
 	 * Create a task for a worker
 	 * 
@@ -130,13 +130,12 @@ public class Task extends AbstractTask {
 		super.save();
 		
 		try {
-			PreparedCqlQuery<String, String> stmt = cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("INSERT INTO parameter (task_id, name, value) " + 
-							 " VALUES (?, ?, ?);")
-					.asPreparedStatement();
-			
 			for (Entry<String, Object> param : params.entrySet()) {
-				stmt.withUUIDValue(this.getId())
+				cs().prepareQuery(Entities.CF_STANDARD1)
+						.withCql("INSERT INTO parameter (task_id, name, value) " + 
+								" VALUES (?, ?, ?);")
+						.asPreparedStatement()
+					.withUUIDValue(this.getId())
 					.withStringValue(param.getKey())
 					.withByteBufferValue(param.getValue(), ObjectSerializer.get())
 					.execute();

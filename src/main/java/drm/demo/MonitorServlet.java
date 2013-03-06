@@ -19,13 +19,9 @@
  */
 package drm.demo;
 
-import static drm.taskworker.Entities.ofy;
-
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -33,11 +29,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.appengine.api.datastore.QueryResultIterable;
-import com.googlecode.objectify.NotFoundException;
-
 import drm.taskworker.Workflow;
-import drm.taskworker.tasks.AbstractTask;
 
 /**
  * Servlet implementation class Workflow
@@ -59,13 +51,9 @@ public class MonitorServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		
-
-		QueryResultIterable<drm.taskworker.Workflow> workflowList = ofy()
-				.load().type(drm.taskworker.Workflow.class).iterable();
 
 		List<drm.taskworker.Workflow> workflows = new ArrayList<drm.taskworker.Workflow>();
-		for (drm.taskworker.Workflow wf : workflowList) {
+		for (drm.taskworker.Workflow wf : Workflow.getAll()) {
 			workflows.add(wf);
 		}
 

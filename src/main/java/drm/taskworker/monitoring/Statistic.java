@@ -19,22 +19,9 @@
  */
 package drm.taskworker.monitoring;
 
-import java.util.Date;
 import java.util.List;
 
-import com.googlecode.objectify.Ref;
-import com.googlecode.objectify.annotation.Embed;
-import com.googlecode.objectify.annotation.Entity;
-import com.googlecode.objectify.annotation.Id;
-import com.googlecode.objectify.annotation.Parent;
-
-import drm.taskworker.Entities;
-
-
-@Embed
 public class Statistic {
-
-	
 
 	private String name;
 
@@ -42,6 +29,7 @@ public class Statistic {
 	private double sdtDev;
 	private long samples;
 	
+	@SuppressWarnings("unused")
 	private Statistic(){}
 
 	public Statistic(String name, double average, double sdtDev, long samples) {

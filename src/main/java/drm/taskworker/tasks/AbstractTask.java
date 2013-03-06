@@ -104,12 +104,12 @@ public abstract class AbstractTask implements Serializable {
 	 * Get the parent of this task.
 	 */
 	public AbstractTask getParentTask() {
-		if (this.parentId == NONE) {
+		if (this.parentId.equals(NONE)) {
 			// this is a root node
 			return null;
 		}
 		
-		return AbstractTask.load(this.parentId);
+		return AbstractTask.load(this.workflowId, this.parentId);
 	}
 	
 	/**
@@ -257,50 +257,55 @@ public abstract class AbstractTask implements Serializable {
 	/**
 	 * Load a task from the database 
 	 */
-	public static AbstractTask load(UUID id) {
+	public static AbstractTask load(UUID workflowID, UUID id) {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT * FROM task WHERE id = ?;")
+				.withCql("SELECT * FROM task WHERE workflow_id = ? AND id = ?;")
 				.asPreparedStatement()
+				.withUUIDValue(workflowID)
 				.withUUIDValue(id)
 				.execute();
 			
 			for (Row<String, String> row : result.getResult().getRows()) {
-			    ColumnList<String> columns = row.getColumns();
-			    
-			    AbstractTask task = null;
-			    String taskType = columns.getStringValue("type", "task");
-			    if (taskType == "work") {
-			    	task = new Task();
-			    } else if (taskType == "end") {
-			    	task = new EndTask();
-			    } else if (taskType == "start") {
-			    	task = new StartTask();
-			    }
-			    
-			    task.taskId = columns.getUUIDValue("id", null);
-			    
-			    task.createdAt = new Date(columns.getLongValue("created_at", 0L));
-			    task.startedAt = new Date(columns.getLongValue("finished_at", 0L));
-			    if (task.startedAt.getTime() == 0) {
-			    	task.startedAt = null;
-			    }
-			    task.finishedAt = new Date(columns.getLongValue("started_at", 0L));
-			    if (task.finishedAt.getTime() == 0) {
-			    	task.finishedAt = null;
-			    }
-			    
-			    task.parentId = columns.getUUIDValue("parent_id", null);
-			    task.workflowId = columns.getUUIDValue("workflow_id", null);
-			    
-			    task.worker = columns.getStringValue("worker_name", null);
-			    
-			    return task;
+			    return createTaskFromDB(row);
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	public static AbstractTask createTaskFromDB(Row<String, String> row) {
+		ColumnList<String> columns = row.getColumns();
+		
+		AbstractTask task = null;
+		String taskType = columns.getStringValue("type", "task");
+		if (taskType.equals("work")) {
+			task = new Task();
+		} else if (taskType.equals("end")) {
+			task = new EndTask();
+		} else if (taskType.equals("start")) {
+			task = new StartTask();
+		}
+		
+		task.taskId = columns.getUUIDValue("id", null);
+		
+		task.createdAt = new Date(columns.getLongValue("created_at", 0L));
+		task.startedAt = new Date(columns.getLongValue("finished_at", 0L));
+		if (task.startedAt.getTime() == 0) {
+			task.startedAt = null;
+		}
+		task.finishedAt = new Date(columns.getLongValue("started_at", 0L));
+		if (task.finishedAt.getTime() == 0) {
+			task.finishedAt = null;
+		}
+		
+		task.parentId = columns.getUUIDValue("parent_id", null);
+		task.workflowId = columns.getUUIDValue("workflow_id", null);
+		
+		task.worker = columns.getStringValue("worker_name", null);
+		
+		return task;
 	}
 
 	/**
@@ -310,10 +315,11 @@ public abstract class AbstractTask implements Serializable {
 		try {
 			Keyspace cs = cs();
 			cs.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("UPDATE task SET started_at = ?, finished_at = ? WHERE id = ?;")
+					.withCql("UPDATE task SET started_at = ?, finished_at = ? WHERE workflow_id = ? AND id = ?;")
 					.asPreparedStatement()
 					.withLongValue(this.startedAt.getTime())		// started_at
 					.withLongValue(this.finishedAt.getTime())		// finished_at
+					.withUUIDValue(this.workflowId) 				// workflow_id
 		            .withUUIDValue(this.getId())					// id
 		            .execute();
 		} catch (ConnectionException e) {

@@ -19,10 +19,7 @@
  */
 package drm.taskworker.monitoring;
 
-import java.util.Date;
 import java.util.Set;
-
-import drm.taskworker.Workflow;
 
 public interface IMonitor {
 	

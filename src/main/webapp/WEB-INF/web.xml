@@ -46,10 +46,6 @@
 	   <servlet-name>monitor</servlet-name>
 	   <servlet-class>drm.demo.MonitorServlet</servlet-class>
 	</servlet>
-	<!-- <servlet>
-       <servlet-name>crawl</servlet-name>
-       <servlet-class>drm.demo.CrawlServlet</servlet-class>
-    </servlet>-->
 
 	<servlet-mapping>
 		<servlet-name>start</servlet-name>

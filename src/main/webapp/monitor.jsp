@@ -22,7 +22,7 @@
 <%@page import="drm.taskworker.tasks.AbstractTask"%>
 <%@page import="java.util.List"%>
 <%@page import="drm.taskworker.tasks.Task"%>
-<%@page import="drm.taskworker.Workflow"%>
+<%@page import="drm.taskworker.tasks.Workflow"%>
 <%@page import="java.util.Date"%>
 <%@page import="drm.taskworker.monitoring.Monitor"%>
 <%@page import="drm.taskworker.monitoring.IMonitor"%>

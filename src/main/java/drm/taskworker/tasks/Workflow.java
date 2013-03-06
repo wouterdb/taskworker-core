@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
  */
 
-package drm.taskworker;
+package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
@@ -36,11 +36,10 @@ import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 
+import drm.taskworker.Entities;
+import drm.taskworker.Worker;
 import drm.taskworker.config.Config;
-import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.EndTask;
-import drm.taskworker.tasks.StartTask;
-import drm.taskworker.tasks.Task;
+import drm.taskworker.config.WorkflowConfig;
 
 /**
  * This class manages a workflow
@@ -119,7 +118,7 @@ public class Workflow implements Serializable {
 	 * @param task
 	 * @return
 	 */
-	public void startNewWorkflow(StartTask task, boolean end)
+	public void startNewWorkflow(Task task, boolean end)
 			throws IOException {
 		this.queueTask(task);
 
@@ -163,8 +162,8 @@ public class Workflow implements Serializable {
 	/**
 	 * Create a new task that starts the workflow
 	 */
-	public StartTask newStartTask() {
-		return new StartTask(this, this.getWorkflowConfig().getWorkflowStart());
+	public Task newStartTask() {
+		return new Task(this, this.getWorkflowConfig().getWorkflowStart());
 	}
 
 	/**
@@ -197,8 +196,7 @@ public class Workflow implements Serializable {
 	 * @param workflowConfig
 	 *            the workflowConfig to set
 	 */
-	private void setWorkflowConfig(
-			drm.taskworker.config.WorkflowConfig workflowConfig) {
+	private void setWorkflowConfig(WorkflowConfig workflowConfig) {
 		this.workflowConfig = workflowConfig;
 	}
 

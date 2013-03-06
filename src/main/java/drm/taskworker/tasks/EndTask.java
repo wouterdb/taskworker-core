@@ -38,9 +38,10 @@ public class EndTask extends AbstractTask {
 		super(parent.getWorkflow(), parent, worker);
 	}
 	
-	public EndTask() {
-		super();
-	}
+	/**
+	 * Constructor for persistence
+	 */
+	EndTask() { super(); }
 
 	@Override
 	public String getTaskType() {

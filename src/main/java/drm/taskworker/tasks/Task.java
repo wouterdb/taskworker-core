@@ -32,7 +32,6 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Entities;
-import drm.taskworker.Workflow;
 
 /**
  * A task that needs to be executed by a worker
@@ -55,8 +54,18 @@ public class Task extends AbstractTask {
 		super(parent.getWorkflow(), parent, worker);
 	}
 	
-	public Task() {
-		super();
+	/**
+	 * Constructor for persistence
+	 */
+	Task() { super(); }
+	
+	/**
+	 * Create a task that starts the workflow.
+	 * @param workflow
+	 * @param worker
+	 */
+	public Task(Workflow workflow, String worker) {
+		this(workflow, null, worker);
 	}
 	
 	/**

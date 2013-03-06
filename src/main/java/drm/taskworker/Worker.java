@@ -125,10 +125,10 @@ public abstract class Worker implements Runnable {
 					// execute the task
 					TaskResult result = null;
 					task.setStartedAt();
-					if (task.getTaskType() == "work" || task.getTaskType() == "start") {
+					if (task.getTaskType().equals("work")) {
 						result = this.work((Task) task);
 						
-					} else if (task.getTaskType() == "end") {
+					} else if (task.getTaskType().equals("end")) {
 						/*
 						 * This is an end task. If we get this task, we need to
 						 * ensure that all other tasks of this workflow have

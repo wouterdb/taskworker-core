@@ -33,8 +33,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import drm.taskworker.Workflow;
 import drm.taskworker.tasks.AbstractTask;
+import drm.taskworker.tasks.Workflow;
 
 /**
  * Servlet implementation class Workflow
@@ -58,8 +58,8 @@ public class WorkflowServlet extends HttpServlet {
 			HttpServletResponse response) throws ServletException, IOException {
 		Workflow workflow = null;
 
-		List<drm.taskworker.Workflow> workflows = new ArrayList<drm.taskworker.Workflow>();
-		for (drm.taskworker.Workflow wf : Workflow.getAll()) {
+		List<drm.taskworker.tasks.Workflow> workflows = new ArrayList<drm.taskworker.tasks.Workflow>();
+		for (drm.taskworker.tasks.Workflow wf : Workflow.getAll()) {
 			workflows.add(wf);
 		}
 

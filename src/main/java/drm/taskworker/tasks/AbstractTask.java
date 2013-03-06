@@ -37,7 +37,6 @@ import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 
 import drm.taskworker.Entities;
-import drm.taskworker.Workflow;
 
 
 /**
@@ -284,8 +283,6 @@ public abstract class AbstractTask implements Serializable {
 			task = new Task();
 		} else if (taskType.equals("end")) {
 			task = new EndTask();
-		} else if (taskType.equals("start")) {
-			task = new StartTask();
 		}
 		
 		task.taskId = columns.getUUIDValue("id", null);

@@ -41,7 +41,8 @@ import drm.taskworker.tasks.TaskResult;
  * 
  */
 public abstract class Worker implements Runnable {
-	protected static final Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
+	protected static final Logger logger = Logger.getLogger(Worker.class
+			.getCanonicalName());
 
 	private String name = null;
 	private boolean working = true;
@@ -57,21 +58,21 @@ public abstract class Worker implements Runnable {
 		this.name = name;
 		logger.info("Worker started with name " + this.name);
 	}
-	
+
 	/**
 	 * Get the name of the next worker
 	 */
 	public String getNextWorker() {
 		return this.nextWorker;
 	}
-	
+
 	/**
 	 * Set the name of the next worker
 	 */
 	protected void setNextWorker(String name) {
 		this.nextWorker = name;
 	}
-	
+
 	/**
 	 * Do the work for the given task.
 	 */
@@ -99,76 +100,68 @@ public abstract class Worker implements Runnable {
 	@Override
 	public void run() {
 		logger.info("Started worker " + this.toString());
-		
+
 		Service svc = Service.get();
-		
+
 		while (this.working) {
 			try {
-				Queue q = new Queue("pull-queue");
-				List<TaskHandle> tasks = q.leaseTasksByTag(10,
-						TimeUnit.SECONDS, 1, this.name);
+				TaskHandle handle = svc.getTask(null, this.name);
 				
-				// this check is a safeguard against bad queue behavior
-				if (tasks.size() > 1) {
-					throw new IllegalStateException("Queue returns more results than requested");
-				}
-				
-				// do work!
-				if (!tasks.isEmpty()) {
-					TaskHandle handle = tasks.get(0);
-
+				if (handle != null) {
 					ObjectInputStream ois = new ObjectInputStream(
 							new ByteArrayInputStream(handle.getPayload()));
 					AbstractTask task = (AbstractTask) ois.readObject();
 					ois.close();
-
+	
 					logger.info("Fetched task " + task.toString() + " for "
 							+ this.name + " with id " + handle.getName());
-
+	
 					// execute the task
 					TaskResult result = null;
 					task.setStartedAt();
 					if (task.getTaskType().equals("work")) {
 						result = this.work((Task) task);
-						
+	
 					} else if (task.getTaskType().equals("end")) {
 						/*
 						 * This is an end task. If we get this task, we need to
-						 * ensure that all other tasks of this workflow have
-						 * been finished.
+						 * ensure that all other tasks of this workflow have been
+						 * finished.
 						 */
-							result = this.work((EndTask) task);
+						result = this.work((EndTask) task);
 					} else {
-						logger.warning("Task type " + task.getTaskType() + " not known.");
+						logger.warning("Task type " + task.getTaskType()
+								+ " not known.");
 						continue;
 					}
 					task.setFinishedAt();
 					task.saveTiming();
-
+	
 					if (result == null) {
 						logger.warning("Worker returns null. Ouch ...");
 						continue;
 					}
-
+	
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						for (AbstractTask newTask : result.getNextTasks()) {
-							
+	
 							svc.queueTask(newTask);
 							logger.info("New task for " + newTask.getWorker()
 									+ " on worker " + this.name);
 						}
 					} else {
 						logger.info("Task " + task.toString() + " failed with "
-								+ result.getResult().toString() + " on " + this.name);
-						
+								+ result.getResult().toString() + " on "
+								+ this.name);
+	
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();
 						}
 					}
-					q.deleteTask(handle);
+					svc.deleteTask(handle);
 				}
 
-				Thread.sleep(100);
+				Thread.sleep(10);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (IOException e) {

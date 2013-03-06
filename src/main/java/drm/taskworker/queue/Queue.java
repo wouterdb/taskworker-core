@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -47,6 +48,14 @@ import com.google.appengine.api.taskqueue.RetryOptions;
 import com.google.appengine.api.taskqueue.TaskHandle;
 import com.google.appengine.api.taskqueue.TaskOptions;
 
+import drm.taskworker.tasks.AbstractTask;
+
+/**
+ * A wrapper around the CapeDwarf queue. A lot of code is copy pasted and 
+ * adapted from CapeDwarf. 
+ *
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
+ */
 public class Queue {
     private static final Sort SORT = new Sort(new SortField("eta", SortField.LONG));
 	
@@ -60,38 +69,45 @@ public class Queue {
         this.searchManager = Search.getSearchManager(tasks);
 	}
 	
-	/**
-	 * Get an instance to the queue
-	 */
-	com.google.appengine.api.taskqueue.Queue getGAEQueue() {
-		return QueueFactory.getQueue(this.queueName);
-	}
-	
     private Cache<String, Object> getCache() {
         return InfinispanUtils.getCache(Application.getAppId(), CacheName.TASKS);
     }
     
-    public TaskHandle add(TaskOptions taskOptions) {
+    /**
+     * Add a new task to the queue.
+     */
+    public TaskHandle add(AbstractTask task) {
+    	TaskOptions taskOptions = null;
+    	try {
+    		taskOptions = task.toTaskOption();
+    	} catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    	
         TaskOptionsHelper helper = new TaskOptionsHelper(taskOptions);
         TaskOptions.Method method = helper.getMethod();
         if (method != TaskOptions.Method.PULL) {
             throw new InvalidQueueModeException("Target queue mode does not support this operation");
         }
         
-        TaskOptionsHelper options = new TaskOptionsHelper(taskOptions);
         try {
-        	TaskOptions copy = new TaskOptions(options.getTaskOptions());
-			String taskName = options.getTaskName();
+        	TaskOptions copy = new TaskOptions(helper.getTaskOptions());
+			String taskName = helper.getTaskName();
 			if (taskName == null) {
 			    taskName = UUID.randomUUID().toString(); // TODO -- unique enough?
 			    copy.taskName(taskName);
 			}
-			Long lifespan = options.getEtaMillis();
-			RetryOptions retryOptions = options.getRetryOptions();
-			Task task = new Task(taskName, this.queueName, copy.getTag(), lifespan, copy, retryOptions);
-			storeTask(task);
-			TaskHandle handle = new TaskHandle(copy, this.queueName);
-        	return handle;
+			Long lifespan = helper.getEtaMillis();
+			RetryOptions retryOptions = helper.getRetryOptions();
+			
+			WorkflowTask queueTask = new WorkflowTask(taskName, this.queueName, 
+					copy.getTag(), lifespan, copy, retryOptions);
+			queueTask.setWorkflowID(task.getWorkflowId().toString());
+			queueTask.setType(task.getTaskType());
+			
+			storeTask(queueTask);
+
+			return new TaskHandle(copy, this.queueName);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -100,39 +116,54 @@ public class Queue {
     private void storeTask(Task task) {
     	tasks.put(task.getName(), task);
     }
-    
-    public List<TaskHandle> leaseTasksByTag(long lease, TimeUnit unit, long countLimit, String tag) {
+
+    /**
+     * Lease a task from the queue
+     * 
+     * @param lease How long is the task leased
+     * @param unit The timeunit of the lease time
+     * @param limit How many task are to be leased
+     * @param taskType The type of task (the name / type of the worker)
+     * @param workflowId The workflow the task belongs to
+     * @return A list of taskhandles
+     */
+    public List<TaskHandle> leaseTasks(long lease, TimeUnit unit, long limit, String taskType, String workflowId) {
     	long leaseMillis = unit.toMillis(lease);
         long now = System.currentTimeMillis();
-    	
         List<TaskHandle> handles = new ArrayList<TaskHandle>();
-        for (Task task : findTasks(tag, countLimit)) {
+
+        for (Task task : findTasks(taskType, workflowId, limit)) {
             task.setLastLeaseTimestamp(now);
             task.setLeasedUntil(now + leaseMillis);
             storeTask(task);
+
             handles.add(new TaskHandle(task.getOptions(), queueName));
         }
         return handles;
     }
     
-    static TermTermination toTerm(QueryBuilder builder, String field, Object value) {
-        return builder.keyword().onField(field).ignoreAnalyzer().ignoreFieldBridge().matching(value);
-    }
-
     @SuppressWarnings({ "unchecked", "rawtypes" })
-	private List<Task> findTasks(String tag, long countLimit) {
+	private List<Task> findTasks(String taskType, String workflowId, long countLimit) {
         QueryBuilder builder = searchManager.buildQueryBuilderForClass(Task.class).get();
 
         Query luceneQuery = builder.bool()
             .must(toTerm(builder, Task.QUEUE, queueName).createQuery())
             .must(builder.range().onField(Task.LEASED_UNTIL).below(System.currentTimeMillis()).createQuery())
             .createQuery();
-
-        if (tag != null) {
-            Query tagQuery = toTerm(builder, Task.TAG, tag).createQuery();
-            luceneQuery = builder.bool().must(luceneQuery).must(tagQuery).createQuery();
+        
+        // the type of task
+        if (taskType != null) {
+        	Query tagQuery = toTerm(builder, Task.TAG, taskType).createQuery();
+        	luceneQuery = builder.bool().must(luceneQuery).must(tagQuery).createQuery();
+        }
+        
+        // constrain to the given workflowId
+        if (workflowId != null) {
+        	Query workflowQuery = toTerm(builder, WorkflowTask.WORKFLOW, taskType).createQuery();
+        	luceneQuery = builder.bool().must(luceneQuery).must(workflowQuery).createQuery();
         }
 
+        // query the cache
         CacheQuery query = searchManager.getQuery(luceneQuery, Task.class)
             .maxResults((int)countLimit).sort(SORT);
 
@@ -140,13 +171,14 @@ public class Queue {
         return (List<Task>) (List)query.list();
     }
 
-    public boolean deleteTask(String taskName) {
+    public boolean deleteTask(TaskHandle taskHandle) {
+        String taskName = taskHandle.getName();
         validateTaskName(taskName);
         return tasks.remove(taskName) != null;
     }
 
-    public boolean deleteTask(TaskHandle taskHandle) {
-        return deleteTask(taskHandle.getName());
+    static TermTermination toTerm(QueryBuilder builder, String field, Object value) {
+        return builder.keyword().onField(field).ignoreAnalyzer().ignoreFieldBridge().matching(value);
     }
     
     static void validateTaskName(String taskName) {

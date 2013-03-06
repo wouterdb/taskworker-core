@@ -20,7 +20,11 @@
 package drm.taskworker;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+
+import com.google.appengine.api.taskqueue.TaskHandle;
 
 import drm.taskworker.queue.Queue;
 import drm.taskworker.tasks.AbstractTask;
@@ -92,15 +96,37 @@ public class Service {
 	 * @param task The task to queue
 	 */
 	public void queueTask(AbstractTask task) {
-		try {
-			// queue the task
-			queue.add(task.toTaskOption());
+		// queue the task
+		queue.add(task);
 			
-			// save the task
-			task.save();
-		} catch (IOException e) {
-			// failed to add the task
-			logger.warning("Failed to add task " + task.getId().toString());
+		// save the task
+		task.save();
+	}
+	
+	/**
+	 * Get a task from the task queue
+	 * 
+	 * @param workflowId The workflow id or null for all workflows
+	 * @param workerType The type of worker
+	 * @return A task or null if no task available
+	 */
+	public TaskHandle getTask(String workflowId, String workerType) {
+		List<TaskHandle> tasks = queue.leaseTasks(10, TimeUnit.SECONDS, 1, workerType, workflowId);
+		
+		// do work!
+		if (!tasks.isEmpty()) {
+			return tasks.get(0);
 		}
+		
+		return null;
+	}
+	
+	/**
+	 * Remove a task when it is finished
+	 * 
+	 * @param handle A handle for the task that needs to be removed.
+	 */
+	public void deleteTask(TaskHandle handle) {
+		this.queue.deleteTask(handle);
 	}
 }

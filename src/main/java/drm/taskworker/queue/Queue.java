@@ -92,11 +92,8 @@ public class Queue {
         
         try {
         	TaskOptions copy = new TaskOptions(helper.getTaskOptions());
-			String taskName = helper.getTaskName();
-			if (taskName == null) {
-			    taskName = UUID.randomUUID().toString(); // TODO -- unique enough?
-			    copy.taskName(taskName);
-			}
+			String taskName = task.getId().toString();
+			copy.taskName(task.getId().toString());
 			Long lifespan = helper.getEtaMillis();
 			RetryOptions retryOptions = helper.getRetryOptions();
 			

@@ -46,6 +46,10 @@
 		
 		<c:if test="${not empty workflow}">
 		<h2>Workflow history for ${workflow.workflowId} - ${workflow.name}</h2>
+		<p>
+		  Started at ${started }<br />
+		  Finished at ${finished }
+		</p>
         <table>
             <tr>
                 <th>Worker type</th>

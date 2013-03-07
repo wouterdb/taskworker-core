@@ -22,6 +22,7 @@ package drm.demo;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,8 @@ public class WorkflowServlet extends HttpServlet {
 		request.setAttribute("workflows", workflows);
 
 		Map<String, Integer> stats = new HashMap<>();
+		Date started = new Date();
+		Date finished = new Date(0);
 		if (request.getParameter("workflowId") != null) {
 			// load the workflow
 			workflow = WorkflowInstance.load(UUID.fromString(request.getParameter("workflowId")));
@@ -77,10 +80,20 @@ public class WorkflowServlet extends HttpServlet {
 					}
 					int value = stats.get(task.getWorker()) + 1;
 					stats.put(task.getWorker(), value);
+					
+					if (task.getStartedAt().before(started)) {
+						started = task.getStartedAt();
+					}
+					
+					if (task.getFinishedAt().after(finished)) {
+						finished = task.getFinishedAt();
+					}
 				}
 			}
 		}
 		
+		request.setAttribute("started", started);
+		request.setAttribute("finished", finished);
 		request.setAttribute("stats", stats);
 		request.setAttribute("workflow", workflow);
 		request.getRequestDispatcher("/workflow.jsp").forward(request, response);

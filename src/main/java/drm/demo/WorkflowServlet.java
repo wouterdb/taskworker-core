@@ -65,35 +65,23 @@ public class WorkflowServlet extends HttpServlet {
 
 		request.setAttribute("workflows", workflows);
 
-		AbstractTask root = null;
-		Map<AbstractTask, List<AbstractTask>> graph = new HashMap<AbstractTask, List<AbstractTask>>();
-		
+		Map<String, Integer> stats = new HashMap<>();
 		if (request.getParameter("workflowId") != null) {
 			// load the workflow
 			workflow = WorkflowInstance.load(UUID.fromString(request.getParameter("workflowId")));
-		
-			// create a graph
-
-			int max = 0;
-			for (AbstractTask task : workflow.getHistory()) {
-				if (task.getParentTask().equals(AbstractTask.NONE)) {
-					root = task;
-				} else {
-					if (!graph.containsKey(task.getParentTask())) {
-						graph.put(task.getParentTask(), new ArrayList<AbstractTask>());
+			
+			if (workflow != null) {
+				for (AbstractTask task : workflow.getHistory()) {
+					if (!stats.containsKey(task.getWorker())) {
+						stats.put(task.getWorker(), 0);
 					}
-					graph.get(task.getParentTask()).add(task);
-					
-					if (graph.get(task.getParentTask()).size() > max) {
-						max = graph.get(task.getParentTask()).size();
-					}
+					int value = stats.get(task.getWorker()) + 1;
+					stats.put(task.getWorker(), value);
 				}
 			}
-
 		}
 		
-		request.setAttribute("graph", graph);
-		request.setAttribute("root", root);
+		request.setAttribute("stats", stats);
 		request.setAttribute("workflow", workflow);
 		request.getRequestDispatcher("/workflow.jsp").forward(request, response);
 	}

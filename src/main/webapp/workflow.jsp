@@ -46,39 +46,19 @@
 		
 		<c:if test="${not empty workflow}">
 		<h2>Workflow history for ${workflow.workflowId} - ${workflow.name}</h2>
-		
-        <script type="text/javascript">
-<!--
-
-	var redraw;
-	var height = 600;
-	var width = 1000;
-
-	/* only do all this when document has finished loading (needed for RaphaelJS */
-	window.onload = function() {
-	    var g = new Graph();
-
-        <c:forEach var="task" items="${workflow.history}">
-        g.addEdge("${task.getParentTask().getId()}", "${task.getId()}");
-        </c:forEach>
-	
-	    /* layout the graph using the Spring layout implementation */
-	    var layouter = new Graph.Layout.Spring(g);
-	    layouter.layout();
-	    
-	    /* draw the graph using the RaphaelJS draw implementation */
-	    var renderer = new Graph.Renderer.Raphael('canvas', g, width, height);
-	    renderer.draw();
-	    
-	    redraw = function() {
-	        layouter.layout();
-	        renderer.draw();
-	    };
-	};
-
--->     </script>
-        
-        <div id="canvas"></div>
+        <table>
+            <tr>
+                <th>Worker type</th>
+                <th>Task processed</th>
+            </tr>
+            <c:forEach items="${stats}" var="entry">
+            <tr>
+                <td>${entry.key }</td>
+                <td>${entry.value }</td>
+            </tr>
+            </c:forEach>
+        </table>
         </c:if>
+        <p><a href="/index.jsp">Back to start</a></p>
 	</body>
 </html>

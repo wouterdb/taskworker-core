@@ -55,5 +55,6 @@
 			
 			<input type="submit" name="submit" value="Submit">
 		</form>
+		<p><a href="/index.jsp">Back to start</a></p>
 	</body>
 </html>

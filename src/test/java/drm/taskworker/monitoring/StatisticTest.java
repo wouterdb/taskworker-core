@@ -21,11 +21,15 @@ package drm.taskworker.monitoring;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.Test;
+
+import com.google.common.primitives.Ints;
 
 import drm.taskworker.monitoring.Statistic;
 
@@ -51,4 +55,31 @@ public class StatisticTest {
 		
 	}
 
+	
+	
+	@Test
+	public void testStatisticFromData() {
+		int[] x = {1,1,1,1,1};
+		Statistic one = new Statistic("test",Ints.asList(x),1.0f);
+		assertEquals(one.getAverage(), 1, 0.0);
+		assertEquals(one.getSdtDev(), 0,0.0);
+		assertEquals(one.getSamples(), 5);
+		
+		
+		one = new Statistic("test",Ints.asList(x),10.0f);
+		assertEquals(one.getAverage(), 0.1, 0.00000001f);
+		
+		int[] y = {2,2,1,1};
+		one = new Statistic("test",Ints.asList(y),1.0f);
+		assertEquals(one.getAverage(), 1, 1.5);
+		assertEquals(0.5773502692,one.getSdtDev(),0.00000001f);
+		assertEquals(one.getSamples(), 4);
+		
+		
+		int[] z = {1,2,3,4,5,6,7,8,9,10,11,12};
+		one = new Statistic("test",Ints.asList(z),1.0f);
+		assertEquals(one.getAverage(), 1, 6.5);
+		assertEquals(3.6055512755,one.getSdtDev(),0.000001f);
+		assertEquals(one.getSamples(), 12);
+	}
 }

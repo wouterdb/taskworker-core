@@ -7,6 +7,7 @@ workers:
     - {zip-files: drm.taskworker.workers.ZipWorker}
     - {extract-urls: drm.taskworker.workers.ExtractUrlWorker}
     - {url-fetch: drm.taskworker.workers.UrlFetchWorker}
+    - {join: drm.taskworker.workers.JoinWorker}
 
 workflows:
     invoices:
@@ -14,6 +15,7 @@ workflows:
             blob-to-cache: {next: csv-to-task}
             csv-to-task: {next: template-to-xml}
             template-to-xml: {next: xsl-fo-render}
-            xsl-fo-render: {next: zip-files}
+            xsl-fo-render: {next: join}
+            join: {next: zip-files}
         start: blob-to-cache
-        end: zip-files            
+        end: zip-files     

@@ -22,6 +22,7 @@ package drm.taskworker;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -45,6 +46,13 @@ public abstract class Worker implements Runnable {
 			.getCanonicalName());
 
 	private String name = null;
+	/**
+	 * @return the name
+	 */
+	public String getName() {
+		return name;
+	}
+
 	private boolean working = true;
 	private String nextWorker = "next";
 
@@ -102,6 +110,7 @@ public abstract class Worker implements Runnable {
 		logger.info("Started worker " + this.toString());
 
 		Service svc = Service.get();
+		int sleepTime = 10;
 
 		while (this.working) {
 			try {
@@ -143,11 +152,14 @@ public abstract class Worker implements Runnable {
 					}
 	
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
-						for (AbstractTask newTask : result.getNextTasks()) {
-	
-							svc.queueTask(newTask);
-							logger.info("New task for " + newTask.getWorker()
-									+ " on worker " + this.name);
+						if (this.getName().equals(task.getWorkflow().getWorkflowConfig().getWorkflowEnd())) {
+							// this is the end of the workflow
+							svc.workflowFinished(task, result.getNextTasks());
+						} else {
+							for (AbstractTask newTask : result.getNextTasks()) {
+								svc.queueTask(newTask);
+								logger.info("New task for " + newTask.getWorker() + " on worker " + this.name);
+							}
 						}
 					} else {
 						logger.info("Task " + task.toString() + " failed with "
@@ -159,9 +171,19 @@ public abstract class Worker implements Runnable {
 						}
 					}
 					svc.deleteTask(handle);
+					
+					sleepTime = sleepTime - 10;
+					if (sleepTime < 0) {
+						sleepTime = 0;
+					}
+				} else {
+					sleepTime += 10;
+					if (sleepTime > 200) {
+						sleepTime = 200;
+					}
 				}
 
-				Thread.sleep(10);
+				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (IOException e) {

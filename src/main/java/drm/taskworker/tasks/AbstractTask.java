@@ -25,7 +25,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import com.google.appengine.api.taskqueue.TaskOptions;
@@ -45,8 +47,6 @@ import drm.taskworker.Entities;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public abstract class AbstractTask implements Serializable {
-	public static final UUID NONE = UUID.fromString("00000000-0000-0000-0000-000000000000");
-	
 	private UUID taskId = null;
 	
 	private String worker = null;
@@ -56,11 +56,9 @@ public abstract class AbstractTask implements Serializable {
 	private Date finishedAt = null;
 	
 	private UUID workflowId = null;
-	
-	/*
-	 * Same comment here as for workflow 
-	 */
-	private UUID parentId = NONE;
+
+	// WARNING: this list is only save to the database and not yet load from it!
+	private List<UUID> parentIds = new ArrayList<>();
 	
 	/**
 	 * Create a task for a worker
@@ -76,7 +74,7 @@ public abstract class AbstractTask implements Serializable {
 		
 		// lookup the next worker
 		if (parentTask != null) {
-			this.parentId = parentTask.getId();
+			this.parentIds.add(parentTask.getId());
 			this.worker = workflow.resolveStep(parentTask.getWorker(), worker);
 		} else {
 			this.worker = worker;
@@ -91,22 +89,36 @@ public abstract class AbstractTask implements Serializable {
 	}
 	
 	/**
+	 * Create a task with multiple parents.
+	 * 
+	 * @param parents
+	 * @param worker2
+	 */
+	public AbstractTask(List<AbstractTask> parents, String worker) {
+		this();
+		
+		if (parents.size() == 0) {
+			throw new IllegalArgumentException("Each task should have at least one parent.");
+		}
+		
+		AbstractTask parentTask = parents.get(0);
+		this.setWorkflowId(parentTask.getWorkflowId());
+
+		for (AbstractTask parent : parents) {
+			this.parentIds.add(parent.getId());
+		}
+		
+		this.worker = parentTask.getWorkflow().resolveStep(parentTask.getWorker(), worker);
+
+		// set the date the task was created
+		this.setCreatedAt(new Date());
+	}
+
+	/**
 	 * Get the id of this task.
 	 */
 	public UUID getId() {
 		return this.taskId;
-	}
-	
-	/**
-	 * Get the parent of this task.
-	 */
-	public AbstractTask getParentTask() {
-		if (this.parentId.equals(NONE)) {
-			// this is a root node
-			return null;
-		}
-		
-		return AbstractTask.load(this.getWorkflowId(), this.parentId);
 	}
 	
 	/**
@@ -215,16 +227,27 @@ public abstract class AbstractTask implements Serializable {
 		)*/
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("INSERT INTO task (id, created_at, parent_id, type, worker_name, workflow_id) " + 
-							 " VALUES (?, ?, ?, ?, ?, ?);")
+					.withCql("INSERT INTO task (id, created_at, type, worker_name, workflow_id) " + 
+							 " VALUES (?, ?, ?, ?, ?);")
 					.asPreparedStatement()
 		            .withUUIDValue(this.getId())					// id
 		            .withLongValue(this.createdAt.getTime())		// created_at
-		            .withUUIDValue(this.parentId)					// parent_id
 		            .withStringValue(this.getTaskType())			// type
 		            .withStringValue(this.getWorker())				// worker_name
-		            .withUUIDValue(this.getWorkflowId())					// workflow_id
+		            .withUUIDValue(this.getWorkflowId())			// workflow_id
 		            .execute();
+			
+			// now save the list of parents
+			for (UUID parentId : this.parentIds) {
+				cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("INSERT INTO task_parent (id, workflow_id, parent_id) " + 
+							 " VALUES (?, ?, ?);")
+					.asPreparedStatement()
+		            .withUUIDValue(this.getId())					// id
+		            .withUUIDValue(this.workflowId)					// workflow_id
+		            .withUUIDValue(parentId)						// parent_id
+		            .execute();
+			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
@@ -281,9 +304,7 @@ public abstract class AbstractTask implements Serializable {
 			task.finishedAt = null;
 		}
 		
-		task.parentId = columns.getUUIDValue("parent_id", null);
 		task.setWorkflowId(columns.getUUIDValue("workflow_id", null));
-		
 		task.worker = columns.getStringValue("worker_name", null);
 		
 		return task;

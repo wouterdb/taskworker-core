@@ -22,6 +22,7 @@ package drm.taskworker.tasks;
 import static drm.taskworker.Entities.cs;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -52,6 +53,17 @@ public class Task extends AbstractTask {
 	 */
 	public Task(AbstractTask parent, String worker) {
 		super(parent.getWorkflow(), parent, worker);
+	}
+	
+	/**
+	 * Create a task for a worker
+	 * 
+	 * @param parents The parents of this task, this collection should contain
+	 * 		at least one parent.
+	 * @param worker The name of the worker
+	 */
+	public Task(List<AbstractTask> parents, String worker) {
+		super(parents, worker);
 	}
 	
 	/**

@@ -32,6 +32,21 @@ public class WorkflowConfig implements Serializable {
 	private String workflowName = null;
 	private Map<String, Map<String, String>> steps = new HashMap<>();
 	private String workflowStart = null;
+	private String workflowEnd = null;
+
+	/**
+	 * @param workflowStop the workflowStop to set
+	 */
+	public void setWorkflowEnd(String workflowEnd) {
+		this.workflowEnd = workflowEnd;
+	}
+
+	/**
+	 * @return the workflowStop
+	 */
+	public String getWorkflowEnd() {
+		return workflowEnd;
+	}
 
 	public WorkflowConfig(String workflow) {
 		this.setWorkflowName(workflow);
@@ -60,6 +75,10 @@ public class WorkflowConfig implements Serializable {
 			
 			if (options.containsKey("start")) {
 				wf.setWorkflowStart((String)options.get("start"));
+			}
+			
+			if (options.containsKey("end")) {
+				wf.setWorkflowEnd((String)options.get("end"));
 			}
 		}
 

@@ -84,7 +84,7 @@ public class Statistic {
 
 		this.average = mean;
 		
-		this.sdtDev = Math.sqrt(sum2/n-mean*mean);
+		this.sdtDev = Math.sqrt((sum2/n-mean*mean)*n/(n-1));
 	}
 
 	public String getName() {

@@ -120,13 +120,19 @@ public class Entities {
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE task (id uuid, parent_id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
+					.withCql("CREATE TABLE task (id uuid, parent_id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, stats blob)")
+					.withCql("CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
+					.execute();
+				
+				ks.prepareQuery(CF_STANDARD1)
+					.withCql("CREATE INDEX task_parent_id ON task_parent (parent_id)")
+					.execute();
+				
+				ks.prepareQuery(CF_STANDARD1)
+					.withCql("CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
 						.execute();
 
 			} catch (ConnectionException ee) {

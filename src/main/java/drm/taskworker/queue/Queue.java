@@ -21,9 +21,7 @@ package drm.taskworker.queue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -43,22 +41,21 @@ import org.jboss.capedwarf.tasks.TaskOptionsHelper;
 
 import com.google.appengine.api.taskqueue.InvalidQueueModeException;
 import com.google.appengine.api.taskqueue.QueueConstants;
-import com.google.appengine.api.taskqueue.QueueFactory;
 import com.google.appengine.api.taskqueue.RetryOptions;
 import com.google.appengine.api.taskqueue.TaskHandle;
 import com.google.appengine.api.taskqueue.TaskOptions;
 
+import drm.taskworker.Job;
 import drm.taskworker.tasks.AbstractTask;
 
 /**
- * A wrapper around the CapeDwarf queue. A lot of code is copy pasted and 
- * adapted from CapeDwarf. 
+ * A wrapper around the CapeDwarf queue. A lot of code is copy pasted from CD 
+ * and then heavily changed.
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Queue {
     private static final Sort SORT = new Sort(new SortField("eta", SortField.LONG));
-	
 	private String queueName;
 	private AdvancedCache<String, Object> tasks;
 	private SearchManager searchManager;
@@ -69,8 +66,19 @@ public class Queue {
         this.searchManager = Search.getSearchManager(tasks);
 	}
 	
+	/**
+	 * Get an instance to the infinispan cache that has been initialized by CD
+	 */
     private Cache<String, Object> getCache() {
         return InfinispanUtils.getCache(Application.getAppId(), CacheName.TASKS);
+    }
+    
+    
+    /**
+     * Add a new job to the queue
+     */
+    public void addJob(Job job) {
+    	this.tasks.put(job.getName(), job);
     }
     
     /**

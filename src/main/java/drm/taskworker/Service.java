@@ -19,7 +19,7 @@
 
 package drm.taskworker;
 
-import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -60,12 +60,23 @@ public class Service {
 		return serviceInstance.get();
 	}
 	
-	private Queue queue = new Queue("pull-queue");
+	private Queue queue = new Queue("task-queue");
 	
 	/**
 	 * Create a new instance of the workflow service.
 	 */
 	public Service() {}
+	
+	/**
+	 * Add a job to the queue
+	 */
+	public void addJob(Job job) {
+		queue.addJob(job);
+	}
+	
+	public void startJobs() {
+		
+	}
 
 	/**
 	 * Add a new workflow to the service
@@ -81,6 +92,9 @@ public class Service {
 		
 		// queue the task
 		this.queueTask(start);
+		
+		// set the start date of the workflow
+		workflow.setStartAt(new Date());
 
 		// send end of workflow as the last task
 		EndTask endTask = new EndTask(start, start.getWorker());
@@ -128,5 +142,23 @@ public class Service {
 	 */
 	public void deleteTask(TaskHandle handle) {
 		this.queue.deleteTask(handle);
+	}
+
+	/**
+	 * Mark the end of a workflow. Only one task can finish a workflow!
+	 * 
+	 * @param task
+	 * @param nextTasks
+	 */
+	public void workflowFinished(AbstractTask task, List<AbstractTask> nextTasks) {
+		WorkflowInstance wf = task.getWorkflow();
+		
+		logger.info("Workflow " + wf.getWorkflowId() + " was finished");
+		
+		if (task.getTaskType().equals("end")) {
+			wf.setFinishedAt(new Date());
+		}
+		
+		// TODO: store results
 	}
 }

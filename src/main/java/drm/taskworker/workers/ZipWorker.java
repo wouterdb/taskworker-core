@@ -52,56 +52,21 @@ public class ZipWorker extends Worker {
 	}
 
 	/**
-	 * Retrieves the filedata and stores it in a list associated with the 
-	 * workflow. When the end of workflow token is received the zip file is
-	 * created.
+	 * Zip all files
 	 */
 	@SuppressWarnings("unchecked")
-	@Override
 	public TaskResult work(Task task) {
+		logger.info("Building zip file");
 		TaskResult result = new TaskResult();
 		if (!task.hasParam("arg0")) {
 			return result.setResult(TaskResult.Result.ARGUMENT_ERROR);
 		}
-
-		// get the list of files to put in the zip, if it does not exist yet
-		// create it.
-		String zipKey = "workflow-files-" + task.getWorkflowId();
-		List<String> zipList = null;
-		if (this.cacheService.contains(zipKey)) {
-			zipList = (List<String>)this.cacheService.get(zipKey);
-		} else {
-			zipList = new ArrayList<String>();
-		}
 		
-		// get the file that is sent to this worker
-		String fileKey = (String)task.getParam("arg0");
-		zipList.add(fileKey);
-		
-		// save the list again
-		this.cacheService.put(zipKey, zipList);
-
-		result.setResult(TaskResult.Result.SUCCESS);
-		return result;
-	}
-
-	/**
-	 * Handle the end of workflow token by sending it to the same next hop.
-	 */
-	@SuppressWarnings("unchecked")
-	public TaskResult work(EndTask task) {
-		logger.info("Building zip file and ending workflow.");
-		TaskResult result = new TaskResult();
+		List<String> fileKeys = (List<String>) task.getParam("arg0");
 		
 		try {
-			// get all zip files
-			String zipKey = "workflow-files-" + task.getWorkflowId();
-			List<String> zipList = null;
-			if (!this.cacheService.contains(zipKey)) {
+			if (fileKeys.size() == 0) {
 				logger.warning("empty zip file");
-				zipList = new ArrayList<String>();
-			} else {
-				zipList = (List<String>)this.cacheService.get(zipKey);
 			}
 			
 			// create the zip stream
@@ -110,7 +75,7 @@ public class ZipWorker extends Worker {
 
 			// save the files in the zip
 			int i = 0;
-			for (String fileKey : zipList) {
+			for (String fileKey : fileKeys) {
 				out.putNextEntry(new ZipEntry(++i + ".pdf"));
 				byte[] pdfData = (byte[])this.cacheService.get(fileKey);
 				out.write(pdfData);
@@ -125,7 +90,10 @@ public class ZipWorker extends Worker {
 			boas.close();
 			
 			this.cacheService.put("workflow-" + task.getWorkflowId(), zipData);
-			logger.info("Stored zip file in cache under " + zipKey);
+			logger.info("Stored zip file in cache under workflow-" + task.getWorkflowId());
+			
+			Task newTask = new Task(task, this.getNextWorker());
+			result.addNextTask(newTask);
 		} catch (FileNotFoundException e) {
 			result.setResult(TaskResult.Result.EXCEPTION);
 			result.setException(e);

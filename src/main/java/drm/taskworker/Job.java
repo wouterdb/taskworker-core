@@ -19,11 +19,16 @@
 
 package drm.taskworker;
 
+import java.io.Serializable;
 import java.util.Date;
+import java.util.UUID;
 
 import org.hibernate.search.annotations.Field;
+import org.hibernate.search.annotations.Indexed;
 import org.hibernate.search.annotations.NumericField;
+import org.hibernate.search.annotations.ProvidedId;
 
+import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.WorkflowInstance;
 
@@ -33,10 +38,14 @@ import drm.taskworker.tasks.WorkflowInstance;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class Job {
+@Indexed
+@ProvidedId
+public class Job implements Serializable {
 
-	private WorkflowInstance workflow;
-	private Task startTask;
+	private transient WorkflowInstance workflow;
+	private transient Task startTask;
+	private UUID workflowId;
+	private UUID startTaskId;
 	
 	private long startAt = 0;
 	private long finishAt = 0;
@@ -63,7 +72,9 @@ public class Job {
 			Date finishAt) {
 		super();
 		this.workflow = workflow;
+		this.workflowId = workflow.getWorkflowId();
 		this.startTask = startTask;
+		this.startTaskId = startTask.getId();
 		
 		setStartAt(startAt.getTime());
 		
@@ -89,6 +100,9 @@ public class Job {
 	 * Get the workflow instance
 	 */
 	public WorkflowInstance getWorkflow() {
+		if (this.workflow == null) {
+			this.workflow = WorkflowInstance.load(this.workflowId);
+		}
 		return workflow;
 	}
 
@@ -98,6 +112,9 @@ public class Job {
 	 * @return
 	 */
 	public Task getStartTask() {
+		if (this.startTask == null) {
+			this.startTask = (Task)AbstractTask.load(this.workflowId, this.startTaskId);
+		}
 		return startTask;
 	}
 
@@ -143,5 +160,21 @@ public class Job {
 			throw new IllegalArgumentException("The finish time should be set after the start time of the job.");
 		}
 		this.finishAt = time;
+	}
+	
+	/**
+	 * The name of a job is the ID of the workflowinstance.
+	 * @return
+	 */
+	public String getName() {
+		return this.getWorkflow().getWorkflowId().toString();
+	}
+	
+	/**
+	 * Is this job finished. A job is finished when the workflow instance has
+	 * been marked as finished.
+	 */
+	public boolean isFinished() {
+		return this.getWorkflow().isFinished();
 	}
 }

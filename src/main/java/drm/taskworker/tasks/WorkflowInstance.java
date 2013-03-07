@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.Queue;
 import com.google.appengine.api.taskqueue.QueueFactory;
+import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
@@ -54,8 +55,8 @@ public class WorkflowInstance implements Serializable {
 	private String name = null;
 	private UUID workflowId = null;
 	
-	private Date startAt = null;
-	private Date deadline = null;
+	private Date startedAt = null;
+	private Date finishedAt = null;
 
 	/**
 	 * Create a new workflow instance
@@ -191,17 +192,13 @@ public class WorkflowInstance implements Serializable {
 	public static WorkflowInstance load(UUID id) {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT id, workflow_name FROM workflow WHERE id = ?;")
+				.withCql("SELECT * FROM workflow WHERE id = ?;")
 				.asPreparedStatement()
 				.withUUIDValue(id)
 				.execute();
 			
 			for (Row<String, String> row : result.getResult().getRows()) {
-			    ColumnList<String> columns = row.getColumns();
-			    
-			    WorkflowInstance wf = new WorkflowInstance();
-			    wf.workflowId = columns.getUUIDValue("id", null);
-			    wf.name = columns.getStringValue("workflow_name", null);
+			    WorkflowInstance wf = createWorkflow(row);
 			    
 			    return wf;
 			}
@@ -209,6 +206,17 @@ public class WorkflowInstance implements Serializable {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	public static WorkflowInstance createWorkflow(Row<String, String> row) {
+		ColumnList<String> columns = row.getColumns();
+		
+		WorkflowInstance wf = new WorkflowInstance();
+		wf.workflowId = columns.getUUIDValue("id", null);
+		wf.name = columns.getStringValue("workflow_name", null);
+		wf.startedAt = columns.getDateValue("started_at", null);
+		wf.finishedAt = columns.getDateValue("finished_at", null);
+		return wf;
 	}
 
 	/**
@@ -246,12 +254,7 @@ public class WorkflowInstance implements Serializable {
 			
 			List<WorkflowInstance> workflows = new ArrayList<>();
 			for (Row<String, String> row : result.getResult().getRows()) {
-			    ColumnList<String> columns = row.getColumns();
-			    
-			    WorkflowInstance wf = new WorkflowInstance();
-			    wf.workflowId = columns.getUUIDValue("id", null);
-			    wf.name = columns.getStringValue("workflow_name", null);
-			    
+			    WorkflowInstance wf = createWorkflow(row);
 			    workflows.add(wf);
 			}
 			
@@ -261,4 +264,99 @@ public class WorkflowInstance implements Serializable {
 		}
 		return null;
 	}
+
+	/**
+	 * Has this workflow finished?
+	 * @return
+	 */
+	public boolean isFinished() {
+		if (finishedAt != null) {
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Has this workflow started?
+	 */
+	public boolean isStarted() {
+		if (this.startedAt != null) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Get the time when the workflow was started. This is the moment when
+	 * the start task was submitted.
+	 * 
+	 * @return the startAt
+	 */
+	public Date getStartAt() {
+		return startedAt;
+	}
+
+	/**
+	 * Set the time when the workflow was started. This should be called when
+	 * the first task is submitted. When this method is called, the value
+	 * is also persisted in the database and the field cannot be changed anymore.
+	 * 
+	 * @param startAt the startAt to set
+	 */
+	public void setStartAt(Date startAt) {
+		if (this.startedAt != null) {
+			throw new IllegalAccessError();
+		}
+		
+		this.startedAt = startAt;
+		
+		try {
+			Keyspace cs = cs();
+			cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE workflow SET started_at = ? WHERE id = ?;")
+					.asPreparedStatement()
+					.withLongValue(this.startedAt.getTime())		// started_at
+					.withUUIDValue(this.getWorkflowId()) 			// workflow_id
+		            .execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Get the time when the workflow is finished.
+	 * 
+	 * @return the finishedAt
+	 */
+	public Date getFinishedAt() {
+		return finishedAt;
+	}
+
+	/**
+	 * Set the time when the workflow was finished. This should be called when
+	 * the last task is ready. When this method is called, the value
+	 * is also persisted in the database and the field cannot be changed anymore.
+	 * 
+	 * @param finishedAt the finishedAt to set
+	 */
+	public void setFinishedAt(Date finishedAt) {
+		if (this.finishedAt != null) {
+			throw new IllegalAccessError(this.finishedAt.toString());
+		}
+		
+		this.finishedAt = finishedAt;
+		
+		try {
+			Keyspace cs = cs();
+			cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE workflow SET finished_at = ? WHERE id = ?;")
+					.asPreparedStatement()
+					.withLongValue(this.finishedAt.getTime())		// finished_at
+					.withUUIDValue(this.getWorkflowId()) 			// workflow_id
+		            .execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
 }

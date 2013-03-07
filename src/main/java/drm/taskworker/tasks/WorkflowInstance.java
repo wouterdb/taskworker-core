@@ -191,7 +191,10 @@ public class WorkflowInstance implements Serializable {
 	public static WorkflowInstance load(UUID id) {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT id, workflow_name FROM workflow;").execute();
+				.withCql("SELECT id, workflow_name FROM workflow WHERE id = ?;")
+				.asPreparedStatement()
+				.withUUIDValue(id)
+				.execute();
 			
 			for (Row<String, String> row : result.getResult().getRows()) {
 			    ColumnList<String> columns = row.getColumns();

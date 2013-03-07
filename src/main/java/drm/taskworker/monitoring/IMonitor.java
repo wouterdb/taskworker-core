@@ -19,10 +19,11 @@
  */
 package drm.taskworker.monitoring;
 
+import java.util.Map;
 import java.util.Set;
 
 public interface IMonitor {
 	
-	public Set<Statistic> getStats();
+	public Map<String,Set<Statistic>> getStats();
 
 }

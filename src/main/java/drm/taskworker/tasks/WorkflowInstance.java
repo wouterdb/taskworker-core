@@ -25,7 +25,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -41,6 +44,7 @@ import drm.taskworker.Entities;
 import drm.taskworker.Worker;
 import drm.taskworker.config.Config;
 import drm.taskworker.config.WorkflowConfig;
+import drm.taskworker.monitoring.Statistic;
 
 /**
  * This class manages a workflow
@@ -48,14 +52,17 @@ import drm.taskworker.config.WorkflowConfig;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class WorkflowInstance implements Serializable {
-	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
+	private static Logger logger = Logger.getLogger(Worker.class
+			.getCanonicalName());
 	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
 
 	private String name = null;
 	private UUID workflowId = null;
-	
+
 	private Date startAt = null;
 	private Date deadline = null;
+
+	private List<Statistic> stats = null;
 
 	/**
 	 * Create a new workflow instance
@@ -175,35 +182,36 @@ public class WorkflowInstance implements Serializable {
 	public void save() {
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("INSERT INTO workflow (id, workflow_name) VALUES (?, ?);")
-					.asPreparedStatement()
-		            .withUUIDValue(this.workflowId)
-		            .withStringValue(this.name)
-		            .execute();
+					.withCql(
+							"INSERT INTO workflow (id, workflow_name) VALUES (?, ?);")
+					.asPreparedStatement().withUUIDValue(this.workflowId)
+					.withStringValue(this.name).execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Load a workflow from the database
 	 */
 	public static WorkflowInstance load(UUID id) {
 		try {
-			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT id, workflow_name FROM workflow WHERE id = ?;")
-				.asPreparedStatement()
-				.withUUIDValue(id)
-				.execute();
-			
+			OperationResult<CqlResult<String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
+					.withCql(
+							"SELECT id, workflow_name, stats FROM workflow WHERE id = ?;")
+					.asPreparedStatement().withUUIDValue(id).execute();
+
 			for (Row<String, String> row : result.getResult().getRows()) {
-			    ColumnList<String> columns = row.getColumns();
-			    
-			    WorkflowInstance wf = new WorkflowInstance();
-			    wf.workflowId = columns.getUUIDValue("id", null);
-			    wf.name = columns.getStringValue("workflow_name", null);
-			    
-			    return wf;
+				ColumnList<String> columns = row.getColumns();
+
+				WorkflowInstance wf = new WorkflowInstance();
+				wf.workflowId = columns.getUUIDValue("id", null);
+				wf.name = columns.getStringValue("workflow_name", null);
+				wf.stats = columns.getValue("stats", Entities.STATS_SERIALISER,
+						null);
+
+				return wf;
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
@@ -211,50 +219,91 @@ public class WorkflowInstance implements Serializable {
 		return null;
 	}
 
+	public List<Statistic> getStats() {
+		return stats;
+	}
+
 	/**
 	 * Get the history of the workflow.
 	 */
 	public List<AbstractTask> getHistory() {
 		try {
-			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+			OperationResult<CqlResult<String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
 					.withCql("SELECT * FROM task WHERE workflow_id = ?;")
-					.asPreparedStatement()
-					.withUUIDValue(this.workflowId)
+					.asPreparedStatement().withUUIDValue(this.workflowId)
 					.execute();
-			
+
 			List<AbstractTask> tasks = new ArrayList<>();
 			for (Row<String, String> row : result.getResult().getRows()) {
 				tasks.add(AbstractTask.createTaskFromDB(row));
 			}
-			
+
 			return tasks;
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
 		return null;
 	}
-	
+
+	public void calcStats() {
+		Map<String, List<Integer>> samples = new HashMap<String, List<Integer>>();
+		
+		for (AbstractTask t : getHistory()) {
+			if(t.getFinishedAt()==null)
+				return;
+			String key = t.getTaskType() + "." + t.getWorker();
+			List<Integer> sample = samples.get(t);
+			if (sample == null) {
+				sample = new ArrayList<>();
+				samples.put(key, sample);
+			}
+			sample.add((int) (t.getFinishedAt().getTime() - t.getStartedAt()
+					.getTime()));
+		}
+
+		List<Statistic> out = new LinkedList<>();
+
+		for (Map.Entry<String, List<Integer>> sample : samples.entrySet()) {
+			out.add(new Statistic(sample.getKey(), sample.getValue(), 1000));
+		}
+
+		this.stats = out;
+
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE workflow set stats = ? where id = ?;")
+					.asPreparedStatement()
+					.withByteBufferValue(out, Entities.STATS_SERIALISER)
+					.withUUIDValue(this.workflowId).execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+
+	}
+
 	/**
-	 * Get all workflows 
+	 * Get all workflows
 	 */
 	public static List<WorkflowInstance> getAll() {
 		try {
-			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT * FROM workflow;")
-					.asPreparedStatement()
+			OperationResult<CqlResult<String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM workflow;").asPreparedStatement()
 					.execute();
-			
+
 			List<WorkflowInstance> workflows = new ArrayList<>();
 			for (Row<String, String> row : result.getResult().getRows()) {
-			    ColumnList<String> columns = row.getColumns();
-			    
-			    WorkflowInstance wf = new WorkflowInstance();
-			    wf.workflowId = columns.getUUIDValue("id", null);
-			    wf.name = columns.getStringValue("workflow_name", null);
-			    
-			    workflows.add(wf);
+				ColumnList<String> columns = row.getColumns();
+
+				WorkflowInstance wf = new WorkflowInstance();
+				wf.workflowId = columns.getUUIDValue("id", null);
+				wf.name = columns.getStringValue("workflow_name", null);
+				wf.stats = columns.getValue("stats", Entities.STATS_SERIALISER,
+						null);
+				workflows.add(wf);
 			}
-			
+
 			return workflows;
 		} catch (ConnectionException e) {
 			e.printStackTrace();

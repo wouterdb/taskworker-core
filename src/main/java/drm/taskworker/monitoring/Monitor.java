@@ -19,96 +19,31 @@
  */
 package drm.taskworker.monitoring;
 
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Counter;
-import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.Metered;
-import com.yammer.metrics.core.Metric;
-import com.yammer.metrics.core.MetricName;
-import com.yammer.metrics.core.MetricProcessor;
-import com.yammer.metrics.core.Timer;
+import drm.taskworker.tasks.WorkflowInstance;
 
-public class Monitor implements IMonitor,MetricProcessor<Set<Statistic>>{
+public class Monitor implements IMonitor {
 
 	private static Logger logger = Logger.getLogger(Monitor.class
 			.getCanonicalName());
 
-	/*
-	 * @Override public Set<Statistic> getStats(Date start, Date end) {
-	 * 
-	 * Map<String,List<Statistic>> snapshots = new HashMap<String,
-	 * List<Statistic>>();
-	 * 
-	 * for(Snapshot s:ofy().load().type(Snapshot.class).filter("timestamp >=",
-	 * start.getTime()).filter("timestamp <",end.getTime()).iterable()){
-	 * for(Statistic stat:s.getStats()){ List<Statistic> mine =
-	 * snapshots.get(stat.getName()); if(mine==null){ mine = new
-	 * LinkedList<Statistic>(); snapshots.put(stat.getName(), mine); }
-	 * mine.add(stat); } }
-	 * 
-	 * Set<Statistic> out = new HashSet<Statistic>(); for(Map.Entry<String,
-	 * List<Statistic>> entry:snapshots.entrySet()){ out.add(new
-	 * Statistic(entry.getKey(), entry.getValue())); } return out; }
-	 */
 	@Override
-	public Set<Statistic> getStats() {
-		Set<Statistic> s = new HashSet<Statistic>();
-	
-		for (Entry<MetricName, Metric> m : Metrics.defaultRegistry()
-				.allMetrics().entrySet()) {
+	public Map<String, Set<Statistic>> getStats() {
+		Map<String, Set<Statistic>> out = new HashMap<String, Set<Statistic>>();
 
-			try {
-				m.getValue().processWith(this, m.getKey(), s);
-			} catch (Exception e) {
-				logger.log(Level.SEVERE, "should not occur", e);
-			}
-
+		for(WorkflowInstance wf: WorkflowInstance.getAll()){
+			if(wf.getStats()==null)
+				wf.calcStats();
+			if(wf.getStats() != null)
+				out.put(wf.getWorkflowId().toString(),new HashSet<>(wf.getStats()));
 		}
 		
-		return s;
+		return out;
 	}
 
-	@Override
-	public void processMeter(MetricName name, Metered meter,
-			Set<Statistic> context) throws Exception {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void processCounter(MetricName name, Counter counter,
-			Set<Statistic> context) throws Exception {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void processHistogram(MetricName name, Histogram histogram,
-			Set<Statistic> context) throws Exception {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void processTimer(MetricName name, Timer timer,
-			Set<Statistic> context) throws Exception {
-		context.add(
-				new Statistic(name.getName(), timer.mean(), timer.stdDev(),
-						timer.count()));
-		
-	}
-
-	@Override
-	public void processGauge(MetricName name, Gauge<?> gauge,
-			Set<Statistic> context) throws Exception {
-		// TODO Auto-generated method stub
-		
-	}
 }

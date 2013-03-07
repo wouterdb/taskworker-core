@@ -64,7 +64,7 @@ public class WeightedRoundRobinTest {
 		testgetNext(bigone);
 	}
 
-	public static final int repeats = 10000;
+	public static final int repeats = 100000;
 	
 	private void testgetNext(float[] probs) {
 		String[] names = new String[probs.length];

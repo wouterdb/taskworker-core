@@ -22,7 +22,6 @@
 <%@page import="drm.taskworker.tasks.AbstractTask"%>
 <%@page import="java.util.List"%>
 <%@page import="drm.taskworker.tasks.Task"%>
-<%@page import="drm.taskworker.tasks.WorkflowInstanceage import="java.util.Date"%>
 <%@page import="drm.taskworker.monitoring.Monitor"%>
 <%@page import="drm.taskworker.monitoring.IMonitor"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"

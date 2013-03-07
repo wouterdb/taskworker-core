@@ -28,8 +28,9 @@ public class Statistic {
 	private double average;
 	private double sdtDev;
 	private long samples;
-	
-	private Statistic(){}
+
+	private Statistic() {
+	}
 
 	public Statistic(String name, double average, double sdtDev, long samples) {
 		super();
@@ -38,31 +39,52 @@ public class Statistic {
 		this.sdtDev = sdtDev;
 		this.samples = samples;
 	}
-	
+
 	public Statistic(String name, List<Statistic> children) {
 		super();
 		this.name = name;
-		
-		//http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
-		
+
+		// http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+
 		double sum = 0;
 		long count = 0;
 		double moment = 0;
-		
-		for(Statistic s:children){
-			//initialisation is not perfect yet ;-) 
-			double delta = count==0 ? 0 : (s.getAverage() - sum/count); 
+
+		for (Statistic s : children) {
+			// initialisation is not perfect yet ;-)
+			double delta = count == 0 ? 0 : (s.getAverage() - sum / count);
 			long nx = count + s.getSamples();
-			double mymoment = s.getSdtDev()*s.getSdtDev()*(s.getSamples()-1);
-			moment += mymoment + delta*delta*count*s.getSamples()/nx;
-			sum += s.average*s.getSamples();			
+			double mymoment = s.getSdtDev() * s.getSdtDev()
+					* (s.getSamples() - 1);
+			moment += mymoment + delta * delta * count * s.getSamples() / nx;
+			sum += s.average * s.getSamples();
 			count = nx;
-			
+
 		}
-		
+
 		this.average = sum / count;
 		this.samples = count;
-		this.sdtDev = Math.sqrt(moment/(count-1));
+		this.sdtDev = Math.sqrt(moment / (count - 1));
+	}
+
+	public Statistic(String name, List<Integer> samples, float div) {
+		this.name = name;
+		this.samples = samples.size();
+
+		int n = samples.size();
+
+		float sum1=0, sum2=0;
+		for (int x : samples){
+			float xc = x/div;
+			sum1 = sum1 + xc;
+			sum2 = sum2 + xc*xc;
+		}
+			
+		float mean = sum1 / n;
+
+		this.average = mean;
+		
+		this.sdtDev = Math.sqrt(sum2/n-mean*mean);
 	}
 
 	public String getName() {
@@ -81,15 +103,28 @@ public class Statistic {
 		return samples;
 	}
 
-	
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setAverage(double average) {
+		this.average = average;
+	}
+
+	public void setSdtDev(double sdtDev) {
+		this.sdtDev = sdtDev;
+	}
+
+	public void setSamples(long samples) {
+		this.samples = samples;
+	}
+
 	@Override
 	public String toString() {
 		return "Statistic [name=" + name + ", samples=" + samples
 				+ ", average=" + average + ", sdtDev=" + sdtDev + "]";
 	}
 
-	
-	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -114,6 +149,5 @@ public class Statistic {
 			return false;
 		return true;
 	}
-
 
 }

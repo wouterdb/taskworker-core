@@ -272,11 +272,11 @@ public abstract class AbstractTask implements Serializable {
 		task.taskId = columns.getUUIDValue("id", null);
 		
 		task.createdAt = new Date(columns.getLongValue("created_at", 0L));
-		task.startedAt = new Date(columns.getLongValue("finished_at", 0L));
+		task.startedAt = new Date(columns.getLongValue("started_at", 0L));
 		if (task.startedAt.getTime() == 0) {
 			task.startedAt = null;
 		}
-		task.finishedAt = new Date(columns.getLongValue("started_at", 0L));
+		task.finishedAt = new Date(columns.getLongValue("finished_at", 0L));
 		if (task.finishedAt.getTime() == 0) {
 			task.finishedAt = null;
 		}

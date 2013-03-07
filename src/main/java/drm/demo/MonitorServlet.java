@@ -52,13 +52,6 @@ public class MonitorServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 
-		List<drm.taskworker.tasks.WorkflowInstance> workflows = new ArrayList<drm.taskworker.tasks.WorkflowInstance>();
-		for (drm.taskworker.tasks.WorkflowInstance wf : WorkflowInstance.getAll()) {
-			workflows.add(wf);
-		}
-
-		request.setAttribute("workflows", workflows);
-
 		request.getRequestDispatcher("/monitor.jsp").forward(request, response);
 	}
 }

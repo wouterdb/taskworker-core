@@ -253,6 +253,9 @@ public class WorkflowInstance implements Serializable {
 		return null;
 	}
 
+	/**
+	 * Process statistics of tasks in the workflow
+	 */
 	public void calcStats() {
 		Map<String, List<Integer>> samples = new HashMap<String, List<Integer>>();
 		

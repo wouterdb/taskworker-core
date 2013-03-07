@@ -84,7 +84,6 @@ public class JoinWorker extends Worker {
 	/**
 	 * Handle the end of workflow token by sending it to the same next hop.
 	 */
-	@SuppressWarnings("unchecked")
 	public TaskResult work(EndTask task) {
 		logger.info("Joining workflow " + task.getWorkflowId().toString());
 		TaskResult result = new TaskResult();

@@ -115,13 +115,12 @@ public class Entities {
 			try {
 				createKeyspace(ks);
 				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE parameter (task_id uuid PRIMARY KEY, name text, value blob)")
-						.execute();
+					.withCql("CREATE TABLE parameter (task_id uuid PRIMARY KEY, name text, value blob)")
+					.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
 					.withCql("CREATE TABLE task (id uuid, parent_id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
-						.execute();
+					.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
 					.withCql("CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
@@ -133,7 +132,7 @@ public class Entities {
 				
 				ks.prepareQuery(CF_STANDARD1)
 					.withCql("CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
-						.execute();
+					.execute();
 
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");
@@ -166,6 +165,7 @@ public class Entities {
 			return out.getByteBuffer();
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public T fromByteBuffer(ByteBuffer byteBuffer) {
 			

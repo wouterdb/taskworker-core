@@ -178,6 +178,8 @@ public class Service {
 			wf.setFinishedAt(new Date());
 		}
 		
+		wf.calcStats();
+		
 		// TODO: store results
 		Job job = Job.load(wf.getWorkflowId());
 		job.markFinished();

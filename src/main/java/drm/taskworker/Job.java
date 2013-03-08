@@ -19,14 +19,19 @@
 
 package drm.taskworker;
 
+import static drm.taskworker.Entities.cs;
+
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
-import org.hibernate.search.annotations.Field;
-import org.hibernate.search.annotations.Indexed;
-import org.hibernate.search.annotations.NumericField;
-import org.hibernate.search.annotations.ProvidedId;
+import com.netflix.astyanax.connectionpool.OperationResult;
+import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.CqlResult;
+import com.netflix.astyanax.model.Row;
 
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.Task;
@@ -38,17 +43,16 @@ import drm.taskworker.tasks.WorkflowInstance;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-@Indexed
-@ProvidedId
 public class Job implements Serializable {
-
 	private transient WorkflowInstance workflow;
 	private transient Task startTask;
 	private UUID workflowId;
 	private UUID startTaskId;
 	
-	private long startAt = 0;
-	private long finishAt = 0;
+	private long startAfter = 0;
+	private long finishBefore = 0;
+	private boolean isFinished = false;
+	private boolean isStarted = false;
 	
 	/**
 	 * Create a new job that is started immediately
@@ -76,10 +80,10 @@ public class Job implements Serializable {
 		this.startTask = startTask;
 		this.startTaskId = startTask.getId();
 		
-		setStartAt(startAt.getTime());
+		setStartAfter(startAt.getTime());
 		
 		if (finishAt != null) {
-			setFinishAt(finishAt.getTime());
+			setFinishBefore(finishAt.getTime());
 		}
 	}
 	
@@ -95,6 +99,8 @@ public class Job implements Serializable {
 	public Job(WorkflowInstance workflow, Task startTask, Date startAt) {
 		this(workflow, startTask, startAt, null);
 	}
+	
+	private Job() {}
 	
 	/**
 	 * Get the workflow instance
@@ -123,19 +129,17 @@ public class Job implements Serializable {
 	 * 
 	 * @return
 	 */
-	@Field
-	@NumericField
-	public long getStartAt() {
-		return this.startAt;
+	public long getStartAfter() {
+		return this.startAfter;
 	}
 	
 	/**
 	 * Set the start time of this job in a timestamp in milliseconds.
 	 * 
-	 * @param startAt
+	 * @param startAfter
 	 */
-	public void setStartAt(long startAt) {
-		this.startAt = startAt;
+	public void setStartAfter(long startAfter) {
+		this.startAfter = startAfter;
 	}
 
 	/**
@@ -144,10 +148,8 @@ public class Job implements Serializable {
 	 * 
 	 * @return
 	 */
-	@Field
-	@NumericField
-	public long getFinishAt() {
-		return finishAt;
+	public long getFinishBefore() {
+		return finishBefore;
 	}
 
 	/**
@@ -155,11 +157,11 @@ public class Job implements Serializable {
 	 * 
 	 * @param time
 	 */
-	public void setFinishAt(long time) {
-		if (time > 0 && time < this.startAt) {
+	public void setFinishBefore(long time) {
+		if (time > 0 && time < this.startAfter) {
 			throw new IllegalArgumentException("The finish time should be set after the start time of the job.");
 		}
-		this.finishAt = time;
+		this.finishBefore = time;
 	}
 	
 	/**
@@ -175,6 +177,131 @@ public class Job implements Serializable {
 	 * been marked as finished.
 	 */
 	public boolean isFinished() {
-		return this.getWorkflow().isFinished();
+		return this.isFinished;
+	}
+	
+	/**
+	 * Is this job started. A job is started when the workflow instance has
+	 * been marked as started.
+	 */
+	public boolean isStarted() {
+		return this.isStarted;
+	}
+	
+	/**
+	 * Mark this job as started
+	 */
+	public void markStarted() {
+		this.isStarted = true;
+		this.save();
+	}
+	
+	/**
+	 * Mark this job as finished
+	 */
+	public void markFinished() {
+		this.isFinished = true;
+		this.save();
+	}
+	
+	/**
+	 * Get the job id, this is the same as the id of the workflow instance.
+	 */
+	public String getJobId() {
+		return this.getWorkflow().getWorkflowId().toString();
+	}
+	
+	/**
+	 * Create a job in the database
+	 */
+	public void create() {
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("INSERT INTO job (workflow_id, start_task_id, start_after, finish_before, started, finished) " + 
+								" VALUES (?, ?, ?, ?, false, false);")
+				.asPreparedStatement()
+				.withUUIDValue(this.getWorkflow().getWorkflowId())
+				.withUUIDValue(this.getStartTask().getId())
+				.withLongValue(this.startAfter)
+				.withLongValue(this.finishBefore)
+				.execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Save the state of the job in the database
+	 */
+	public void save() {
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("UPDATE job SET started = ?, finished = ? WHERE workflow_id = ? AND start_after = ? AND finish_before = ?")
+				.asPreparedStatement()
+				.withBooleanValue(this.isStarted)
+				.withBooleanValue(this.isFinished)
+				.withUUIDValue(this.getWorkflow().getWorkflowId())
+				.withLongValue(this.startAfter)
+				.withLongValue(this.finishBefore)
+				.execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Load the given job from the database
+	 */
+	public static Job load(UUID jobId) {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM job WHERE workflow_id = ?")
+				.asPreparedStatement()
+				.withUUIDValue(jobId)
+				.execute();
+			
+			for (Row<String, String> row : result.getResult().getRows()) {
+				return createJob(row);
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	/**
+	 * Load all jobs that should start and are not finished
+	 */
+	public static List<Job> getJobsThatShouldStart() {
+		List<Job> jobs = new ArrayList<>();
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM job WHERE started = false AND start_after < ?")
+				.asPreparedStatement()
+				.withLongValue(new Date().getTime())
+				.execute();
+		
+			for (Row<String, String> row : result.getResult().getRows()) {
+				jobs.add(createJob(row));
+			}
+			
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return jobs;
+	}
+
+	public static Job createJob(Row<String, String> row) {
+		ColumnList<String> columns = row.getColumns();
+		
+		Job job = new Job();
+		job.workflowId = columns.getUUIDValue("workflow_id", null);
+		job.startTaskId = columns.getUUIDValue("start_task_id", null);
+		job.startAfter = columns.getLongValue("start_after", 0L);
+		job.finishBefore = columns.getLongValue("finish_before", 0L);
+		job.isStarted = columns.getBooleanValue("started", false);
+		job.isFinished = columns.getBooleanValue("finished", false);
+		
+		return job;
 	}
 }

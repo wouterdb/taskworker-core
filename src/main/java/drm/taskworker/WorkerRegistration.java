@@ -56,6 +56,23 @@ public class WorkerRegistration implements ServletContextListener {
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}
+
+		// start a thread to manage the queue service
+		Thread thread = ThreadManager.createBackgroundThread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					Service.get().startJobs();
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+		
+		thread.start();
 	}
 
 	/**

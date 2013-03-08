@@ -20,6 +20,7 @@
 package drm.demo;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,7 @@ import com.google.appengine.api.blobstore.BlobKey;
 import com.google.appengine.api.blobstore.BlobstoreService;
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory;
 
+import drm.taskworker.Job;
 import drm.taskworker.Service;
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.Task;
@@ -101,16 +103,20 @@ public class StartWorkflowServlet extends HttpServlet {
 			request.setAttribute("error", "Either file or text should be provided.");
 		}
 		if (data != null) {
+			// get the delay
+			int delay = Integer.valueOf(request.getParameter("date"));
+			Date when = new Date(System.currentTimeMillis() + (delay * 1000));
+			
 			// create a workflow and save it
 			WorkflowInstance workflow = new WorkflowInstance(request.getParameter("workflow"));
 			Task task = workflow.newStartTask();
 			task.addParam("arg0", data);
 						
-			Service.get().startWorkflow(workflow, task);
-			String id = workflow.getWorkflowId().toString();
-				
-			request.setAttribute("workflowId", id);
+			Job newJob = new Job(workflow, task, when);
+			Service.get().addJob(newJob);
 			
+			String id = workflow.getWorkflowId().toString();
+			request.setAttribute("workflowId", id);
 			request.setAttribute("info", "Started workflow with id <a href=\"/workflow?workflowId=" + id + "\">" + id + "</a>");
 		}
 

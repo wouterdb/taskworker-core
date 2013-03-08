@@ -115,11 +115,11 @@ public class Entities {
 			try {
 				createKeyspace(ks);
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE parameter (task_id uuid PRIMARY KEY, name text, value blob)")
+					.withCql("CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
 					.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE task (id uuid, parent_id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
+					.withCql("CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
 					.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
@@ -133,7 +133,19 @@ public class Entities {
 				ks.prepareQuery(CF_STANDARD1)
 					.withCql("CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
 					.execute();
-
+				
+				ks.prepareQuery(CF_STANDARD1)
+					.withCql("CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
+					.execute();
+				
+				ks.prepareQuery(CF_STANDARD1)
+					.withCql("CREATE INDEX job_started ON job (started)")
+					.execute();
+			
+				ks.prepareQuery(CF_STANDARD1)
+					.withCql("CREATE INDEX job_finished ON job (finished)")
+					.execute();
+				
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");
 				throw new IllegalStateException(ee);

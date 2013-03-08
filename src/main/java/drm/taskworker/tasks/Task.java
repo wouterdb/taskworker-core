@@ -25,9 +25,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.Logger;
 import java.util.Set;
 
+import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.CqlResult;
+import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.serializers.ObjectSerializer;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerContext;
@@ -37,8 +42,6 @@ import drm.taskworker.Entities;
 /**
  * A task that needs to be executed by a worker
  *
- * TODO Add the history of the task
- * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Task extends AbstractTask {
@@ -153,13 +156,37 @@ public class Task extends AbstractTask {
 		try {
 			for (Entry<String, Object> param : params.entrySet()) {
 				cs().prepareQuery(Entities.CF_STANDARD1)
-						.withCql("INSERT INTO parameter (task_id, name, value) " + 
+					.withCql("INSERT INTO parameter (task_id, name, value) " + 
 								" VALUES (?, ?, ?);")
-						.asPreparedStatement()
+					.asPreparedStatement()
 					.withUUIDValue(this.getId())
 					.withStringValue(param.getKey())
 					.withByteBufferValue(param.getValue(), ObjectSerializer.get())
 					.execute();
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Load the parameters of this task from the database
+	 */
+	public void loadParameters() {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM parameter WHERE task_id = ?")
+				.asPreparedStatement()
+				.withUUIDValue(this.getId())
+				.execute();
+			
+			for (Row<String, String> row : result.getResult().getRows()) {
+				ColumnList<String> columns = row.getColumns();
+				
+				String name = columns.getStringValue("name", null);
+				Object value = ObjectSerializer.get().fromByteBuffer(columns.getByteBufferValue("value", null));
+				
+				this.addParam(name, value);
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();

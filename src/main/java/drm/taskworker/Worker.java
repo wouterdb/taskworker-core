@@ -38,8 +38,10 @@ import drm.taskworker.tasks.TaskResult;
 /**
  * A work class that fetches work from a pull queue
  * 
- * @author bart
+ * TODO: add workflow abort
+ * TODO: mark jobs in the database as started and finished
  * 
+ * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public abstract class Worker implements Runnable {
 	protected static final Logger logger = Logger.getLogger(Worker.class
@@ -136,6 +138,8 @@ public abstract class Worker implements Runnable {
 						 * This is an end task. If we get this task, we need to
 						 * ensure that all other tasks of this workflow have been
 						 * finished.
+						 * 
+						 * TODO: implement this
 						 */
 						result = this.work((EndTask) task);
 					} else {

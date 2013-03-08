@@ -307,6 +307,11 @@ public abstract class AbstractTask implements Serializable {
 		task.setWorkflowId(columns.getUUIDValue("workflow_id", null));
 		task.worker = columns.getStringValue("worker_name", null);
 		
+		if (task.getTaskType().equals("work")) {
+			// load parameters
+			((Task)task).loadParameters();
+		}
+		
 		return task;
 	}
 
@@ -321,7 +326,7 @@ public abstract class AbstractTask implements Serializable {
 					.asPreparedStatement()
 					.withLongValue(this.startedAt.getTime())		// started_at
 					.withLongValue(this.finishedAt.getTime())		// finished_at
-					.withUUIDValue(this.getWorkflowId()) 				// workflow_id
+					.withUUIDValue(this.getWorkflowId()) 			// workflow_id
 		            .withUUIDValue(this.getId())					// id
 		            .execute();
 		} catch (ConnectionException e) {

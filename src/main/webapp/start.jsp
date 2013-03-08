@@ -53,6 +53,9 @@
 			<label for="text">Data input:</label>
 			<textarea name="text" id="text"></textarea><br />
 			
+			<label for="date">Start when (number of seconds from now):</label>
+            <input type="text" name="date" id="date" value="5" /><br />
+			
 			<input type="submit" name="submit" value="Submit">
 		</form>
 		<p><a href="/index.jsp">Back to start</a></p>

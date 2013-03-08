@@ -71,11 +71,24 @@ public class Service {
 	 * Add a job to the queue
 	 */
 	public void addJob(Job job) {
-		queue.addJob(job);
+		job.create();
+		job.getWorkflow().save();
+		job.getStartTask().save();
+		logger.info("Stored job to start at " + new Date(job.getStartAfter()));
 	}
 	
+	/**
+	 * Start all jobs that have a start time after now
+	 */
 	public void startJobs() {
+		List<Job> jobs = Job.getJobsThatShouldStart();
 		
+		for (Job job : jobs) {
+			if (!job.getWorkflow().isStarted()) {
+				logger.info("Found a job to start " + job.getJobId());
+				this.startWorkflow(job);
+			}
+		}
 	}
 
 	/**
@@ -83,7 +96,10 @@ public class Service {
 	 * 
 	 * @param workflow The workflow to start
 	 */
-	public void startWorkflow(WorkflowInstance workflow, Task start) {
+	public void startWorkflow(Job job) {
+		WorkflowInstance workflow = job.getWorkflow();
+		Task start = job.getStartTask();
+		
 		// save the workflow
 		workflow.save();
 		
@@ -100,6 +116,9 @@ public class Service {
 		EndTask endTask = new EndTask(start, start.getWorker());
 		endTask.save();
 		this.queueTask(endTask);
+		
+		// mark job as started
+		job.markStarted();
 		
 		logger.info("Started workflow. Added task for " + start.getWorker());
 	}
@@ -160,5 +179,7 @@ public class Service {
 		}
 		
 		// TODO: store results
+		Job job = Job.load(wf.getWorkflowId());
+		job.markFinished();
 	}
 }

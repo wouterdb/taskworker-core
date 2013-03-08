@@ -73,14 +73,6 @@ public class Queue {
         return InfinispanUtils.getCache(Application.getAppId(), CacheName.TASKS);
     }
     
-    
-    /**
-     * Add a new job to the queue
-     */
-    public void addJob(Job job) {
-    	this.tasks.put(job.getName(), job);
-    }
-    
     /**
      * Add a new task to the queue.
      */

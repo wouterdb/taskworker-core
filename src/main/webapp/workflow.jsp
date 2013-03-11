@@ -63,6 +63,7 @@
             </c:forEach>
         </table>
         </c:if>
+        <p><a href="/download?id=workflow-${workflow.workflowId}">Download Result</a></p>
         <p><a href="/index.jsp">Back to start</a></p>
 	</body>
 </html>

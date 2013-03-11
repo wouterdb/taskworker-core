@@ -314,6 +314,7 @@ public class WorkflowInstance implements Serializable {
 		}
 		return null;
 	}
+	
 
 	/**
 	 * Has this workflow finished?

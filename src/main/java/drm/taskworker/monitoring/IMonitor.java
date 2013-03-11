@@ -24,6 +24,14 @@ import java.util.Set;
 
 public interface IMonitor {
 	
+	/**
+	 * get all available statistics, for all available Jobs, divided per Job
+	 */
 	public Map<String,Set<Statistic>> getStats();
+
+	/**
+	 * get all available statistics, for the N most recently completed Jobs, divided per Job
+	 */
+	Map<String, Set<Statistic>> getStats(int n);
 
 }

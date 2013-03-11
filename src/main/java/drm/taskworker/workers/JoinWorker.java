@@ -131,6 +131,8 @@ public class JoinWorker extends Worker {
 		// also create a new endTask
 		result.addNextTask(new EndTask(task, this.getNextWorker()));
 
+		this.cacheService.deleteAll(taskKeys);
+		
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}
 }

@@ -19,10 +19,18 @@
  */
 package drm.taskworker.monitoring;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 
 import drm.taskworker.tasks.WorkflowInstance;
@@ -34,9 +42,42 @@ public class Monitor implements IMonitor {
 
 	@Override
 	public Map<String, Set<Statistic>> getStats() {
+		List<WorkflowInstance> in =WorkflowInstance.getAll();
+		
+		return getStats(in);
+	}
+
+	protected Map<String, Set<Statistic>> getStats(List<WorkflowInstance> in) {
 		Map<String, Set<Statistic>> out = new HashMap<String, Set<Statistic>>();
 
-		for(WorkflowInstance wf: WorkflowInstance.getAll()){
+		for(WorkflowInstance wf: in){
+			if(wf.getStats()==null)
+				wf.calcStats();
+			if(wf.getStats() != null)
+				out.put(wf.getWorkflowId().toString(),new HashSet<>(wf.getStats()));
+		}
+		
+		return out;
+	}
+	
+	@Override
+	public Map<String, Set<Statistic>> getStats(int lastN) {
+		//FIXME: inefficient as cassandra can not 'order by'  
+		List<WorkflowInstance> all = new ArrayList<>(WorkflowInstance.getAll());
+		Collections.sort(all, new Comparator<WorkflowInstance>() {
+
+			@Override
+			public int compare(WorkflowInstance o1, WorkflowInstance o2) {
+				return o1.getFinishedAt().compareTo(o2.getFinishedAt());
+			}
+		});
+		
+		int idx = Math.max(0, all.size()-11);
+		all=all.subList(idx, all.size());
+		
+		Map<String, Set<Statistic>> out = new HashMap<String, Set<Statistic>>();
+
+		for(WorkflowInstance wf: all){
 			if(wf.getStats()==null)
 				wf.calcStats();
 			if(wf.getStats() != null)

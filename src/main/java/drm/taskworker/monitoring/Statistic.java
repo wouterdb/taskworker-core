@@ -24,6 +24,8 @@ import java.util.List;
 public class Statistic {
 
 	private String name;
+	private String role = "dev";
+	private float cost = 1.0f;
 
 	private double average;
 	private double sdtDev;
@@ -73,18 +75,18 @@ public class Statistic {
 
 		int n = samples.size();
 
-		float sum1=0, sum2=0;
-		for (int x : samples){
-			float xc = x/div;
+		float sum1 = 0, sum2 = 0;
+		for (int x : samples) {
+			float xc = x / div;
 			sum1 = sum1 + xc;
-			sum2 = sum2 + xc*xc;
+			sum2 = sum2 + xc * xc;
 		}
-			
+
 		float mean = sum1 / n;
 
 		this.average = mean;
-		
-		this.sdtDev = Math.sqrt((sum2/n-mean*mean)*n/(n-1));
+
+		this.sdtDev = Math.sqrt((sum2 / n - mean * mean) * n / (n - 1));
 	}
 
 	public String getName() {
@@ -107,6 +109,14 @@ public class Statistic {
 		this.name = name;
 	}
 
+	public float getCost() {
+		return cost;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
 	public void setAverage(double average) {
 		this.average = average;
 	}
@@ -117,6 +127,14 @@ public class Statistic {
 
 	public void setSamples(long samples) {
 		this.samples = samples;
+	}
+
+	public void setCost(float cost) {
+		this.cost = cost;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
 	}
 
 	@Override

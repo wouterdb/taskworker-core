@@ -55,18 +55,17 @@ public class FairShare implements IScheduler, WorkFlowStateListener {
 
 		this.workers = workers;
 		Service.get().addWorkflowStateListener(this);
-		
-		
-		//attempt to recover old data
+
+		// attempt to recover old data
 		WeightedRoundRobin old = null;
-		
-		for(String w:workers){
+
+		for (String w : workers) {
 			old = Service.get().getPriorities(w);
-			if(old!=null)
+			if (old != null)
 				break;
 		}
-			
-		if(old!=null){
+
+		if (old != null) {
 			workflows.addAll(Arrays.asList(old.getNames()));
 		}
 		rebuild();
@@ -75,25 +74,22 @@ public class FairShare implements IScheduler, WorkFlowStateListener {
 	@Override
 	public synchronized void workflowStarted(WorkflowInstance wf) {
 		workflows.add(wf.getWorkflowId().toString());
-		System.out.println("added: " +wf.getWorkflowId().toString() );
 		rebuild();
 	}
 
 	@Override
 	public synchronized void workflowFinished(WorkflowInstance wf) {
 		workflows.remove(wf.getWorkflowId().toString());
-		
-		System.out.println("removed: " +wf.getWorkflowId().toString() );
 		rebuild();
-
 	}
 
 	private void rebuild() {
 		float[] weights = new float[workflows.size()];
 		Arrays.fill(weights, 1.0f);
-		
-		WeightedRoundRobin wrr = new WeightedRoundRobin(workflows.toArray(new String[workflows.size()]), weights);
-		for(String worker:workers)
+
+		WeightedRoundRobin wrr = new WeightedRoundRobin(
+				workflows.toArray(new String[workflows.size()]), weights);
+		for (String worker : workers)
 			Service.get().setPriorities(worker, wrr);
 	}
 

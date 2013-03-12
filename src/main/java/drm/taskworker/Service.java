@@ -202,6 +202,7 @@ public class Service {
 		TaskHandle handle = getTask(workflow, workerType);
 
 		if (handle == null && workflow!=null) {
+			
 			logger.info("scheduler missed (no work for: " + workflow + ", "
 					+ workerType + "), taking random");
 			// don't go on fishing expedition, just grab work, if any

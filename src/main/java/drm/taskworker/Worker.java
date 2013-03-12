@@ -38,8 +38,8 @@ import drm.taskworker.tasks.TaskResult;
 /**
  * A work class that fetches work from a pull queue
  * 
- * TODO: add workflow abort
- * TODO: mark jobs in the database as started and finished
+ * TODO: add workflow abort TODO: mark jobs in the database as started and
+ * finished
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
@@ -48,6 +48,7 @@ public abstract class Worker implements Runnable {
 			.getCanonicalName());
 
 	private String name = null;
+
 	/**
 	 * @return the name
 	 */
@@ -116,28 +117,28 @@ public abstract class Worker implements Runnable {
 
 		while (this.working) {
 			try {
-				TaskHandle handle = svc.getTask(null, this.name);
-				
+				TaskHandle handle = svc.getTask(this.name);
+
 				if (handle != null) {
 					ObjectInputStream ois = new ObjectInputStream(
 							new ByteArrayInputStream(handle.getPayload()));
 					AbstractTask task = (AbstractTask) ois.readObject();
 					ois.close();
-	
+
 					logger.info("Fetched task " + task.toString() + " for "
 							+ this.name + " with id " + handle.getName());
-	
+
 					// execute the task
 					TaskResult result = null;
 					task.setStartedAt();
 					if (task.getTaskType().equals("work")) {
 						result = this.work((Task) task);
-	
+
 					} else if (task.getTaskType().equals("end")) {
 						/*
 						 * This is an end task. If we get this task, we need to
-						 * ensure that all other tasks of this workflow have been
-						 * finished.
+						 * ensure that all other tasks of this workflow have
+						 * been finished.
 						 * 
 						 * TODO: implement this
 						 */
@@ -149,33 +150,42 @@ public abstract class Worker implements Runnable {
 					}
 					task.setFinishedAt();
 					task.saveTiming();
-	
+
 					if (result == null) {
 						logger.warning("Worker returns null. Ouch ...");
 						continue;
 					}
-	
+
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
-						if (this.getName().equals(task.getWorkflow().getWorkflowConfig().getWorkflowEnd())) {
+						if (this.getName().equals(
+								task.getWorkflow().getWorkflowConfig()
+										.getWorkflowEnd())) {
 							// this is the end of the workflow
-							svc.workflowFinished(task, result.getNextTasks());
+							// if end-of-batch, signal end-of-job
+							if (task.getTaskType().equals("end")) {
+								svc.workflowFinished(task,
+										result.getNextTasks());
+							}
+							
 						} else {
 							for (AbstractTask newTask : result.getNextTasks()) {
 								svc.queueTask(newTask);
-								logger.info("New task for " + newTask.getWorker() + " on worker " + this.name);
+								logger.info("New task for "
+										+ newTask.getWorker() + " on worker "
+										+ this.name);
 							}
 						}
 					} else {
 						logger.info("Task " + task.toString() + " failed with "
 								+ result.getResult().toString() + " on "
 								+ this.name);
-	
+
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();
 						}
 					}
 					svc.deleteTask(handle);
-					
+
 					sleepTime = sleepTime - 10;
 					if (sleepTime < 0) {
 						sleepTime = 0;

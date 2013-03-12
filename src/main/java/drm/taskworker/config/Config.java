@@ -35,6 +35,8 @@ public class Config implements Serializable {
 	private static Config config = null;
 	private Map<String, WorkerConfig> workers = null;
 	private Map<String, WorkflowConfig> workflows = null;
+	private SchedulerConfig scheduler = null;
+	
 	
 	/**
 	 * The default constructor for the configuration.
@@ -51,6 +53,7 @@ public class Config implements Serializable {
 			Config cfg = new Config();
 			cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
 			cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
+			cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
 			
 			config = cfg;
 		}
@@ -58,6 +61,7 @@ public class Config implements Serializable {
 		return config;
 	}
 	
+
 	public static Config getConfig() {
 		return config;
 	}
@@ -90,6 +94,18 @@ public class Config implements Serializable {
 		this.workers = workers;
 	}
 
+	
+
+	public void setScheduler(SchedulerConfig sched) {
+		this.scheduler  = sched;
+		
+	}
+	
+	public SchedulerConfig getScheduler() {
+		return scheduler;
+	}
+
+	
 	/**
 	 * Get the workflow with the given name.
 	 * @param name

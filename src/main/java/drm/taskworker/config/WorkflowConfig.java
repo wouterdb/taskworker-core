@@ -84,7 +84,7 @@ public class WorkflowConfig implements Serializable {
 
 		return workflows;
 	}
-
+	
 	/**
 	 * Add a new step to the workflow
 	 * 

@@ -19,3 +19,15 @@ workflows:
             join: {next: zip-files}
         start: blob-to-cache
         end: zip-files     
+
+scheduler:
+    class: drm.taskworker.schedule.FairShare
+    workers:
+        - blob-to-cache
+        - csv-to-task
+        - template-to-xml
+        - xsl-fo-render
+        - extract-urls
+        - join
+        - url-fetch
+        - zip-files

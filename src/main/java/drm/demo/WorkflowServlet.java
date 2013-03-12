@@ -81,11 +81,11 @@ public class WorkflowServlet extends HttpServlet {
 					int value = stats.get(task.getWorker()) + 1;
 					stats.put(task.getWorker(), value);
 					
-					if (task.getStartedAt().before(started)) {
+					if (task.getStartedAt() != null && task.getStartedAt().before(started)) {
 						started = task.getStartedAt();
 					}
 					
-					if (task.getFinishedAt().after(finished)) {
+					if (task.getFinishedAt() != null && task.getFinishedAt().after(finished)) {
 						finished = task.getFinishedAt();
 					}
 				}

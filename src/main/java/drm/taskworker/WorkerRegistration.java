@@ -52,11 +52,14 @@ public class WorkerRegistration implements ServletContextListener {
 		InputStream input = event.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml");
 		Config config = Config.loadConfig(input);
 		
+		if(config.getScheduler()!=null)
+			config.getScheduler().create();
+		
 		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}
-
+		
 		// start a thread to manage the queue service
 		Thread thread = ThreadManager.createBackgroundThread(new Runnable() {
 			@Override

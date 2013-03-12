@@ -156,7 +156,7 @@ public class Queue {
         
         // constrain to the given workflowId
         if (workflowId != null) {
-        	Query workflowQuery = toTerm(builder, WorkflowTask.WORKFLOW, taskType).createQuery();
+        	Query workflowQuery = toTerm(builder, WorkflowTask.WORKFLOW, workflowId).createQuery();
         	luceneQuery = builder.bool().must(luceneQuery).must(workflowQuery).createQuery();
         }
 

@@ -19,9 +19,10 @@
  */
 package drm.taskworker.schedule;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
-public class WeightedRoundRobin {
+public class WeightedRoundRobin implements Serializable {
 
 	private final float[] borders;
 	private final String[] names;
@@ -50,7 +51,12 @@ public class WeightedRoundRobin {
 		return names;
 	}
 
+	/**
+	 * @return one of the registered names, the probability of any name being returned is proportional to the weight given
+	 */
 	public String getNext(){
+		if(names.length==0)
+			return null;
 		int index = Arrays.binarySearch(borders, (float)Math.random());
 		if(index<0){
 			return names[-index-1];

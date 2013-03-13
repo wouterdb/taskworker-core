@@ -13,7 +13,7 @@
 		<appengine.target.version>1.7.5</appengine.target.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-	
+
 	<distributionManagement>
 		<repository>
 			<id>dnetfs</id>
@@ -22,6 +22,21 @@
 		</repository>
 	</distributionManagement>
 
+	<repositories>
+		<repository>
+			<id>dnet.dreamaas</id>
+			<url>https://distrinet.cs.kuleuven.be/software/DREAMaaS/maven/</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+
+	<!-- TODO lighten deps http://stackoverflow.com/questions/13572502/how-to-exclude-a-dependency-for-a-specific-scope-only 
+		https://github.com/Netflix/astyanax/issues/225 -->
 	<dependencies>
 		<!-- Compile/runtime dependencies -->
 		<dependency>
@@ -174,13 +189,13 @@
 				</executions>
 			</plugin>
 		</plugins>
-		 <extensions>
-            <extension>
-                <groupId>org.apache.maven.wagon</groupId>
-                <artifactId>wagon-ssh</artifactId>
-                <version>1.0</version>
-            </extension>
-        </extensions>
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ssh</artifactId>
+				<version>1.0</version>
+			</extension>
+		</extensions>
 	</build>
 
 </project>

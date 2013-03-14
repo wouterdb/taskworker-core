@@ -72,9 +72,11 @@ pushd taskworker-examples
 mvn clean install
 popd
 
-to deploy the example application, copy the file target/examples-0.0.1-SNAPSHOT.war to the server to ./standalone/deployments/ROOT.war
- (e.g. cp taskworker-examples/target/examples-0.0.1-SNAPSHOT.war ../jboss-as/build/target/jboss-as-7.2.0.Final/standalone/deployments/ROOT.war)
+to deploy the example application, go to the directory containing the server and run
 
+./bin/jboss-cli.sh
+connect
+deploy --name=ROOT.war [path of dreamaas sdk]/taskworker-examples/target/examples-0.0.1-SNAPSHOT.war
 
 now browse to http://127.0.0.1:8080/
 

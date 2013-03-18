@@ -13,8 +13,8 @@ For long term storage it uses Cassandra.
 we assume a linux machine
 prerequisites: Java 7, git, maven3 (For Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3. The command will be then 'mvn3' instead of 'mvn'.)
 
-1.1.Installing Cassandra
-------------------------
+1.1.Installing Cassandra 1.2
+----------------------------
 
 We use the datastax packages for cassandra.
 For instructions, see http://www.datastax.com/docs/1.1/install/index

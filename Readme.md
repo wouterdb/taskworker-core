@@ -20,22 +20,22 @@ We use the datastax packages for cassandra.
 For instructions, see http://www.datastax.com/docs/1.1/install/index
 For red-hat like systems,as root, do
 
-cat > /etc/yum.repos.d/datastax.repo <<EOF
-[datastax]
-name= DataStax Repo for Apache Cassandra
-baseurl=http://rpm.datastax.com/community
-enabled=1
-gpgcheck=0
-EOF
+    cat > /etc/yum.repos.d/datastax.repo <<EOF
+    [datastax]
+    name= DataStax Repo for Apache Cassandra
+    baseurl=http://rpm.datastax.com/community
+    enabled=1
+    gpgcheck=0
+    EOF
 
-yum install cassandra12
-systemctl start cassandra.service
+    yum install cassandra12
+    systemctl start cassandra.service
 
 to make sure cassandra start at boot
-systemctl enable cassandra.service
+    systemctl enable cassandra.service
 
 to see if it runs correctly
-systemctl status cassandra.service
+    systemctl status cassandra.service
 
 
 

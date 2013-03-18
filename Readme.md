@@ -1,6 +1,6 @@
-Dreamaas Single Machine JDK
+DREAMaaS Single Machine JDK
 
-This JDK allows experimenting with the Dreamaas API on a single machine. 
+This JDK allows experimenting with the DREAMaaS API on a single machine. 
 
 It uses the Capedwarf implementation of the Google app engine API, which runs on JBoss AS 7.
 For short term storage it uses JBoss' infinispan.

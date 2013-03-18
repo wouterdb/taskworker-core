@@ -12,6 +12,7 @@ For long term storage it uses Cassandra.
 
 we assume a linux machine
 prerequisites: maven3, java, git
+(for Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3)
 
 1.1.Installing Cassandra
 ------------------------

@@ -32,9 +32,11 @@ For red-hat like systems,as root, do
     systemctl start cassandra.service
 
 to make sure cassandra start at boot
+
     systemctl enable cassandra.service
 
 to see if it runs correctly
+
     systemctl status cassandra.service
 
 
@@ -49,11 +51,11 @@ extract the archive
 
 start the server with
 
-bin/standalone.sh -c standalone-capedwarf.xml
+    bin/standalone.sh -c standalone-capedwarf.xml
 
 to clear the cache, do
 
-rm -r standalone/data
+    rm -r standalone/data
 
 
 1.3.Getting the DREAMaaS SDK
@@ -63,20 +65,20 @@ The sdk and examples can be cloned from github (https://github.com/dreamaas)
 
 more specific, 
 
-git clone git://github.com/dreamaas/taskworker-core.git
-pushd taskworker-core
-mvn clean install
-popd
-git clone git://github.com/dreamaas/taskworker-examples.git
-pushd taskworker-examples
-mvn clean install
-popd
+    git clone git://github.com/dreamaas/taskworker-core.git
+    pushd taskworker-core
+    mvn clean install
+    popd
+    git clone git://github.com/dreamaas/taskworker-examples.git
+    pushd taskworker-examples
+    mvn clean install
+    popd
 
 to deploy the example application, go to the directory containing the server and run
 
-./bin/jboss-cli.sh
-connect
-deploy --name=ROOT.war [path of dreamaas sdk]/taskworker-examples/target/examples-0.0.1-SNAPSHOT.war
+    ./bin/jboss-cli.sh
+    connect
+    deploy --name=ROOT.war [path of dreamaas sdk]/taskworker-examples/target/examples-0.0.1-SNAPSHOT.war
 
 now browse to http://127.0.0.1:8080/
 

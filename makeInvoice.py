@@ -23,4 +23,4 @@ import sys;
 print("invoice;date;name;street;zipcode;city;email;product;total")
 
 for i in range(int(sys.argv[1])):
-	print("2013;25/02/2013;Bart Vanbrabant;Celestijnenlaan 200A;3000;Leuven;bart@vanbrabant.eu;Cloud computing resource for 24/01/2013 to 24/02/2013;"+str(i*1342))
+	print("2013;25/02/2013;Bart ;Celestijnenlaan 200A;3000;Leuven;bart@xx.eu;Cloud computing resource for 24/01/2013 to 24/02/2013;"+str(i*1342))

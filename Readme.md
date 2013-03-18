@@ -11,15 +11,14 @@ For long term storage it uses Cassandra.
 ---------------
 
 we assume a linux machine
-prerequisites: maven3, Java 7, git
-(for Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3)
+prerequisites: maven3 (for Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3), Java 7, git
 
 1.1.Installing Cassandra
 ------------------------
 
 We use the datastax packages for cassandra.
 For instructions, see http://www.datastax.com/docs/1.1/install/index
-For red-hat like systems,as root, do
+For red-hat like systems, as root, do
 
     cat > /etc/yum.repos.d/datastax.repo <<EOF
     [datastax]
@@ -87,7 +86,9 @@ now browse to http://127.0.0.1:8080/
 2.Rolling your own
 ------------------
 A dreamaas project consists out of
+
 1- workers
+
 2- configuration
 
 

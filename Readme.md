@@ -123,12 +123,12 @@ The third section initialisez a scheduler. It requires at least a class argument
 -------------------
 to create a new project, do
 
-mvn  -e archetype:generate -DarchetypeGroupId=taskworker -DarchetypeArtifactId=worker-archetype -DarchetypeVersion=1.0-SNAPSHOT -DarchetypeRepository=https://distrinet.cs.kuleuven.be/software/DREAMaaS/maven/  -DgroupId=[groud ID] -DartifactId=[project ID]
+    mvn  -e archetype:generate -DarchetypeGroupId=taskworker -DarchetypeArtifactId=worker-archetype -DarchetypeVersion=1.0-SNAPSHOT -DarchetypeRepository=https://distrinet.cs.kuleuven.be/software/DREAMaaS/maven/  -DgroupId=[groud ID] -DartifactId=[project ID]
 
 This will set up a skeleton project.
 The project can be built with
 
-mvn package
+    mvn package
 
 To import the project into eclipse use File -> Import -> Existing Maven Project
 (If this option  doesn't exist, install the m2e eclipse plugin (help -> eclipse marketplace -> find -> maven integration for eclipse)) 

@@ -111,9 +111,9 @@ The yaml file has three sections: workers, worklows and scheduler.
 The workers section creates instances of worker classes, binding each to a unique name
 The workflow section defines new workflows. Each worklow has the following structure
 
-[name]:
-    start: [name of start task]
-    end: [name of end task]
+    [name]:
+       start: [name of start task]
+       end: [name of end task]
 
 additionally, a section step can be used to map abstract task names to actual task names. 
 

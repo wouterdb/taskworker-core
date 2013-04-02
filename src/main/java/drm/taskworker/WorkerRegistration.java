@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker;
 
@@ -37,11 +37,11 @@ import drm.taskworker.config.Config;
  */
 public class WorkerRegistration implements ServletContextListener {
 	private List<Worker> background_threads = null;
-	
+
 	public WorkerRegistration() {
 		background_threads = new ArrayList<Worker>();
 	}
-	
+
 	private void addWorker(Worker worker) {
 		Thread thread = ThreadManager.createBackgroundThread(worker);
 		this.background_threads.add(worker);
@@ -49,33 +49,41 @@ public class WorkerRegistration implements ServletContextListener {
 	}
 
 	public void contextInitialized(ServletContextEvent event) {
-		InputStream input = event.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml");
+		InputStream input = event.getServletContext().getResourceAsStream(
+				"/WEB-INF/workers.yaml");
 		Config config = Config.loadConfig(input);
-		
-		if(config.getScheduler()!=null)
+
+		if (config.getScheduler() != null) {
+			//scheduler means master server
+			
 			config.getScheduler().create();
-		
-		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
+
+			// start a thread to manage the queue service
+			Thread thread = ThreadManager
+					.createBackgroundThread(new Runnable() {
+						@Override
+						public void run() {
+							while (true) {
+								Service.get().startJobs();
+								try {
+									Thread.sleep(100);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					});
+
+			thread.start();
+
+		}
+
+		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers()
+				.values()) {
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}
-		
-		// start a thread to manage the queue service
-		Thread thread = ThreadManager.createBackgroundThread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					Service.get().startJobs();
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		});
-		
-		thread.start();
+
 	}
 
 	/**

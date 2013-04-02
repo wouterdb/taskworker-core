@@ -43,6 +43,8 @@ public class SchedulerConfig implements Serializable {
 	 * Parse the scheduler configuration
 	 */
 	public static SchedulerConfig parseScheduler(Map map) {
+		if(map == null)
+			return null;
 		String clazz = (String) map.remove("class");
 		return new SchedulerConfig(clazz,map);
 	}

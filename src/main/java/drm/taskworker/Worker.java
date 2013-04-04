@@ -28,6 +28,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.TaskHandle;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.queue.Queue;
 import drm.taskworker.tasks.AbstractTask;
@@ -58,7 +62,8 @@ public abstract class Worker implements Runnable {
 
 	private boolean working = true;
 	private String nextWorker = "next";
-
+	
+	
 	/**
 	 * Create a new work with a name
 	 * 
@@ -115,10 +120,16 @@ public abstract class Worker implements Runnable {
 		Service svc = Service.get();
 		int sleepTime = 10;
 
+		Timer fetching = Metrics.newTimer(getClass(), "fetch");
+		Timer sleeping = Metrics.newTimer(getClass(), "sleep");
+		
 		while (this.working) {
 			try {
+				
+				TimerContext tc = fetching.time();
 				TaskHandle handle = svc.getTask(this.name);
-
+				tc.stop();
+				
 				if (handle != null) {
 					ObjectInputStream ois = new ObjectInputStream(
 							new ByteArrayInputStream(handle.getPayload()));
@@ -195,9 +206,11 @@ public abstract class Worker implements Runnable {
 					if (sleepTime > 200) {
 						sleepTime = 200;
 					}
+					TimerContext tcs = sleeping.time();
+					Thread.sleep(sleepTime);
+					tcs.stop();
 				}
-
-				Thread.sleep(sleepTime);
+				
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (IOException e) {

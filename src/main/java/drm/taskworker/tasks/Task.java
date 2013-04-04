@@ -138,7 +138,7 @@ public class Task extends AbstractTask {
 	}
 	
 	public void setStartedAt() {
-		timer = Metrics.newTimer(getClass(), getWorker()).time();
+		timer = Metrics.newTimer(getClass(), getWorker(),getWorkflowId().toString()).time();
 		super.setStartedAt();
 	}
 
@@ -151,8 +151,8 @@ public class Task extends AbstractTask {
 	 * Save the task to the database
 	 */
 	public void save() {
+		TimerContext ltimer = Metrics.newTimer(getClass(), "save",getWorkflowId().toString()).time();
 		super.save();
-		
 		try {
 			for (Entry<String, Object> param : params.entrySet()) {
 				cs().prepareQuery(Entities.CF_STANDARD1)
@@ -166,6 +166,8 @@ public class Task extends AbstractTask {
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
+		}finally{
+			ltimer.stop();
 		}
 	}
 	
@@ -173,6 +175,7 @@ public class Task extends AbstractTask {
 	 * Load the parameters of this task from the database
 	 */
 	public void loadParameters() {
+		
 		try {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
 				.withCql("SELECT * FROM parameter WHERE task_id = ?")

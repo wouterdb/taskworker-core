@@ -32,6 +32,7 @@ import org.apache.cassandra.service.CacheService;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 import com.google.appengine.api.taskqueue.TaskHandle;
+import com.yammer.metrics.Metrics;
 
 import drm.taskworker.queue.Queue;
 import drm.taskworker.schedule.WeightedRoundRobin;
@@ -193,6 +194,7 @@ public class Service {
 
 		WeightedRoundRobin rrs = getPriorities(workerType);
 		if (rrs == null) {
+			Metrics.newCounter(getClass(), "noScheduler", workerType).inc();
 			logger.info("no scheduler for " + workerType);
 			return getTask(null, workerType);
 		}
@@ -202,8 +204,8 @@ public class Service {
 		TaskHandle handle = getTask(workflow, workerType);
 
 		if (handle == null && workflow!=null) {
-			
-			logger.info("scheduler missed (no work for: " + workflow + ", "
+			Metrics.newCounter(getClass(), "schedulerMiss",workerType + ":" + workflow).inc();
+			logger.fine("scheduler missed (no work for: " + workflow + ", "
 					+ workerType + "), taking random");
 			// don't go on fishing expedition, just grab work, if any
 			return getTask(null, workerType);

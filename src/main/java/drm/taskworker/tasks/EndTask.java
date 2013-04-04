@@ -15,12 +15,12 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker.tasks;
 
-
-
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * A task used to signal that this is the end of a workflow
@@ -29,22 +29,34 @@ package drm.taskworker.tasks;
  */
 public class EndTask extends AbstractTask {
 	/**
-	 * Signal the end of a workflow to the next step in the workflow 
+	 * Signal the end of a workflow to the next step in the workflow
 	 * 
-	 * @param parent The parent of this task
-	 * @param worker The name of the worker
+	 * @param parent
+	 *            The parent of this task
+	 * @param worker
+	 *            The name of the worker
 	 */
 	public EndTask(AbstractTask parent, String worker) {
 		super(parent.getWorkflow(), parent, worker);
 	}
-	
+
 	/**
 	 * Constructor for persistence
 	 */
-	EndTask() { super(); }
+	EndTask() {
+		super();
+	}
 
 	@Override
 	public String getTaskType() {
 		return "end";
+	}
+
+	@Override
+	public void save() {
+		TimerContext ltimer = Metrics.newTimer(getClass(), "save",
+				getWorkflowId().toString()).time();
+		super.save();
+		ltimer.stop();
 	}
 }

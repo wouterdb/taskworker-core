@@ -25,6 +25,7 @@ import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.appengine.api.taskqueue.TaskHandle;
@@ -218,6 +219,8 @@ public abstract class Worker implements Runnable {
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
+			} catch(Exception e){
+				logger.log(Level.SEVERE,getName()+" failed",e);
 			}
 		}
 	}

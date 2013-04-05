@@ -92,7 +92,7 @@ A dreamaas project consists out of
 2- configuration
 
 
-2.1. Workers
+2.1. workers
 ------------
 Workers execute a particular type of Task.
 To implement a Worker, subclass drm.taskworker.Worker. When work is available for this worker, the work(Task) method is called.
@@ -137,3 +137,5 @@ To import the project into eclipse use File -> Import -> Existing Maven Project
 -----------
 
 For remarks, please use the issue tracker
+to deploy, to the server, use jboss-cli as in 1.3. 
+

@@ -107,7 +107,8 @@ public class JoinWorker extends Worker {
 		for (Entry<String, Object> entry: tasks.entrySet()) {
 			Task t = (Task)entry.getValue();
 			if (t == null) {
-				logger.warning("Fetched an empty join tasks from cache! " + entry.getKey());
+				logger.severe("Fetched an empty join tasks from cache! " + entry.getKey());
+				continue;
 			}
 			
 			parents.add(t);
@@ -117,6 +118,11 @@ public class JoinWorker extends Worker {
 				}
 				varMap.get(key).add(t.getParam(key));
 			}
+		}
+		
+		
+		if(parents.isEmpty()){
+			return result.setResult(TaskResult.Result.ERROR);
 		}
 		
 		// create a new task with all joined arguments

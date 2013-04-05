@@ -37,10 +37,11 @@ import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerContext;
+
+import com.yammer.metrics.Timer.Context;
 
 import drm.taskworker.Entities;
+import drm.taskworker.monitoring.Metrics;
 
 /**
  * A baseclass for all tasks.
@@ -285,7 +286,7 @@ public abstract class AbstractTask implements Serializable {
 	}
 
 	public static AbstractTask createTaskFromDB(Row<String, String> row) {
-		TimerContext ltimer = Metrics.newTimer(AbstractTask.class, "load").time();
+		Context ltimer = Metrics.getNormalRegistry().timer("task.null.load").time();
 		ColumnList<String> columns = row.getColumns();
 
 		AbstractTask task = null;
@@ -324,8 +325,7 @@ public abstract class AbstractTask implements Serializable {
 	 * Save the start and finish timings
 	 */
 	public void saveTiming() {
-		TimerContext ltimer = Metrics.newTimer(getClass(), "saveTiming",
-				getWorkflowId().toString()).time();
+		Context ltimer = Metrics.getNormalRegistry().timer("task.null.saveTiming").time();
 		try {
 			Keyspace cs = cs();
 			cs.prepareQuery(Entities.CF_STANDARD1)

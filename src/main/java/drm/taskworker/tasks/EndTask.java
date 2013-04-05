@@ -19,8 +19,9 @@
 
 package drm.taskworker.tasks;
 
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerContext;
+import com.yammer.metrics.Timer.Context;
+
+import drm.taskworker.monitoring.Metrics;
 
 /**
  * A task used to signal that this is the end of a workflow
@@ -54,8 +55,7 @@ public class EndTask extends AbstractTask {
 
 	@Override
 	public void save() {
-		TimerContext ltimer = Metrics.newTimer(getClass(), "save",
-				getWorkflowId().toString()).time();
+		Context ltimer = Metrics.getNormalRegistry().timer("task.null.save").time();
 		super.save();
 		ltimer.stop();
 	}

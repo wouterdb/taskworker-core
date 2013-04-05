@@ -1,0 +1,15 @@
+bin/standalone.sh -c standalone-capedwarf.xml -Ddisable.blacklist=true -Djboss.bind.address=172.16.3.4
+
+
+
+
+  <distributed-cache name="memcache" mode="ASYNC" owners="1">
+                    <transaction mode="NON_XA" locking="PESSIMISTIC"/>
+                    <eviction strategy="LIRS" max-entries="10000"/>
+                    <file-store preload="false" purge="false"/>
+  		    
+	 	</distributed-cache>
+	 	
+	 	
+	 	
+	 	

@@ -34,10 +34,11 @@ import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.serializers.ObjectSerializer;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerContext;
+import com.yammer.metrics.Timer.Context;
+
 
 import drm.taskworker.Entities;
+import drm.taskworker.monitoring.Metrics;
 
 /**
  * A task that needs to be executed by a worker
@@ -46,7 +47,7 @@ import drm.taskworker.Entities;
  */
 public class Task extends AbstractTask {
 	private Map<String,Object> params = new HashMap<String, Object>();
-	private transient TimerContext timer;
+	private transient Context timer;
 
 	/**
 	 * Create a task for a worker
@@ -138,7 +139,7 @@ public class Task extends AbstractTask {
 	}
 	
 	public void setStartedAt() {
-		timer = Metrics.newTimer(getClass(), getWorker(),getWorkflowId().toString()).time();
+		timer = Metrics.getTempRegistry().timer("worker."+getWorker()+"."+getWorkflowId()+".run").time();
 		super.setStartedAt();
 	}
 
@@ -151,7 +152,7 @@ public class Task extends AbstractTask {
 	 * Save the task to the database
 	 */
 	public void save() {
-		TimerContext ltimer = Metrics.newTimer(getClass(), "save",getWorkflowId().toString()).time();
+		Context ltimer = Metrics.getNormalRegistry().timer("task.null.save").time();
 		super.save();
 		try {
 			for (Entry<String, Object> param : params.entrySet()) {

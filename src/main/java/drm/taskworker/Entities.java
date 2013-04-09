@@ -89,7 +89,7 @@ public class Entities {
 
 	private static Keyspace setupCassandra() {
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
-				.forCluster("TestCluster")
+				.forCluster("Test Cluster")
 				.forKeyspace("taskworker")
 				.withAstyanaxConfiguration(
 						new AstyanaxConfigurationImpl()
@@ -101,7 +101,9 @@ public class Entities {
 						new ConnectionPoolConfigurationImpl(
 								"TaskWorkerConnectionPool").setPort(9160)
 								.setMaxConnsPerHost(1)
-								.setSeeds("127.0.0.1:9160"))
+								//FIXME: make configurable
+								//.setSeeds("172.16.3.4:9160"))
+								.setSeeds("127.0.0.1"))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 

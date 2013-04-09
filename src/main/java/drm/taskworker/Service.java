@@ -194,7 +194,7 @@ public class Service {
 
 		WeightedRoundRobin rrs = getPriorities(workerType);
 		if (rrs == null) {
-			Metrics.getNormalRegistry().counter("worker."+workerType+".scheduler.none").inc();
+			Metrics.getNormalRegistry().counter("scheduler."+workerType+".none").inc();
 			logger.info("no scheduler for " + workerType);
 			return getTask(null, workerType);
 		}
@@ -204,7 +204,7 @@ public class Service {
 		TaskHandle handle = getTask(workflow, workerType);
 
 		if (handle == null && workflow!=null) {
-			Metrics.getTempRegistry().counter("worker."+workerType+"."+workflow+".scheduler.miss").inc();
+			Metrics.getTempRegistry().counter("scheduler."+workerType+"."+workflow+".miss").inc();
 			logger.fine("scheduler missed (no work for: " + workflow + ", "
 					+ workerType + "), taking random");
 			// don't go on fishing expedition, just grab work, if any

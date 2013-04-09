@@ -32,41 +32,47 @@ import org.jboss.util.collection.ConcurrentSet;
 
 import com.yammer.metrics.Metric;
 import com.yammer.metrics.MetricRegistry;
-import com.yammer.metrics.MetricRegistry.MetricBuilder;
 
 public class DecayingRegistry extends MetricRegistry {
-	
-	
-	
+
+	public class MyConcMap extends ConcurrentHashMap<String, Metric> implements
+			ConcurrentMap<String, Metric> {
+
+		@Override
+		public Metric get(Object key) {
+			lastSeen.add((String) key);
+			return super.get(key);
+		}
+
+	}
+
 	public class DecayTask extends TimerTask {
 
 		@Override
 		public void run() {
 			Set<String> ls = lastSeen;
 			lastSeen = new ConcurrentSet<String>();
-			
+
 			for (String metr : getNames()) {
-				if(!ls.contains(metr))
+				if (!ls.contains(metr))
 					remove(metr);
 			}
-			//System.out.println(getNames().size());
+			// System.out.println(getNames().size());
 		}
 
 	}
 
 	private ConcurrentSet<String> lastSeen = new ConcurrentSet<String>();
-	
+
 	public DecayingRegistry(int interval, TimeUnit unit) {
 		Timer t = new Timer("metrics-reaper");
-		t.scheduleAtFixedRate(new DecayTask(), unit.toMillis(interval), unit.toMillis(interval));
+		t.scheduleAtFixedRate(new DecayTask(), unit.toMillis(interval),
+				unit.toMillis(interval));
 	}
 
-	protected <T extends Metric> T getOrAdd(String name, MetricBuilder<T> builder) {
-		lastSeen.add(name);
-		return super.getOrAdd(name, builder);
+	@Override
+	protected ConcurrentMap<String, Metric> buildMap() {
+		return new MyConcMap();
 	}
-
-
-	
 
 }

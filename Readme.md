@@ -133,9 +133,10 @@ The project can be built with
 To import the project into eclipse use File -> Import -> Existing Maven Project
 (If this option  doesn't exist, install the m2e eclipse plugin (help -> eclipse marketplace -> find -> maven integration for eclipse)) 
 
+to deploy, to the server, use jboss-cli as in 1.3. 
+
 3. Remarks
 -----------
 
 For remarks, please use the issue tracker
-to deploy, to the server, use jboss-cli as in 1.3. 
 

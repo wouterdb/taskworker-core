@@ -102,8 +102,8 @@ public class Entities {
 								"TaskWorkerConnectionPool").setPort(9160)
 								.setMaxConnsPerHost(1)
 								//FIXME: make configurable
-								//.setSeeds("172.16.3.4:9160"))
-								.setSeeds("127.0.0.1"))
+								.setSeeds("172.16.3.4:9160"))
+								//.setSeeds("127.0.0.1"))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 

@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
@@ -88,6 +89,9 @@ public class Entities {
 	}
 
 	private static Keyspace setupCassandra() {
+		String seed = System.getProperty("dreamaas.cassandra.seed");
+		if(seed == null || seed.isEmpty())
+			seed="127.0.0.1";
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
 				.forCluster("Test Cluster")
 				.forKeyspace("taskworker")
@@ -101,9 +105,7 @@ public class Entities {
 						new ConnectionPoolConfigurationImpl(
 								"TaskWorkerConnectionPool").setPort(9160)
 								.setMaxConnsPerHost(1)
-								//FIXME: make configurable
-								//.setSeeds("172.16.3.4:9160"))
-								.setSeeds("127.0.0.1"))
+								.setSeeds(seed))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 

@@ -56,8 +56,10 @@ public class WorkerRegistration implements ServletContextListener {
 			config.getScheduler().create();
 		
 		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
-			Worker w = worker.getWorkerInstance();
-			this.addWorker(w);
+			for (int i = 0; i < worker.getThreads(); i++) {
+				Worker w = worker.getWorkerInstance();
+				this.addWorker(w);
+			}
 		}
 		
 		// start a thread to manage the queue service

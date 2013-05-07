@@ -34,6 +34,7 @@ import java.util.Map;
 public class WorkerConfig implements Serializable {
 	private String workerName = null;
 	private String workerClass = null;
+	private int threads = 1;
 	
 	public WorkerConfig(String workerName, String workerClass) {
 		this.workerClass = workerClass;
@@ -99,13 +100,31 @@ public class WorkerConfig implements Serializable {
 	 */
 	public static Map<String,WorkerConfig> parseWorkers(@SuppressWarnings("rawtypes") List<Map> workers) {
 		Map<String,WorkerConfig> results = new HashMap<String, WorkerConfig>();
-		for (Map<String,String> map : workers) {
-			Object[] keys = map.keySet().toArray();
-			WorkerConfig obj = new WorkerConfig((String)keys[0], map.get((String)keys[0]));
+		for (Map<String,Object> map : workers) {
+			if (!map.containsKey("name") || ! map.containsKey("class")) {
+				throw new IllegalArgumentException("Each worker should have name and class attributes set in the config file.");
+			}
 			
-			results.put((String)keys[0], obj);
+			WorkerConfig obj = new WorkerConfig((String)map.get("name"), (String)map.get("class"));
+			obj.setThreads(Integer.valueOf((Integer)map.get("threads")));
+			
+			results.put((String)map.get("name"), obj);
 		}
 		
 		return results;
+	}
+	
+	/**
+	 * Set the number of threads that should be started
+	 */
+	public void setThreads(int threads) {
+		this.threads  = threads;
+	}
+	
+	/**
+	 * Get the number of threads
+	 */
+	public int getThreads() {
+		return this.threads;
 	}
 }

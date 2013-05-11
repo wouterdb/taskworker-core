@@ -29,6 +29,7 @@ import javax.servlet.ServletContextListener;
 import com.google.appengine.api.ThreadManager;
 
 import drm.taskworker.config.Config;
+import drm.taskworker.queue.WorkflowTask;
 
 /**
  * This class starts pull workers for processing tasks from pull queues
@@ -40,6 +41,9 @@ public class WorkerRegistration implements ServletContextListener {
 
 	public WorkerRegistration() {
 		background_threads = new ArrayList<Worker>();
+		
+		//force class load
+		WorkflowTask t = new WorkflowTask();
 	}
 
 	private void addWorker(Worker worker) {

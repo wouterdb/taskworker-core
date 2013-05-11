@@ -1,0 +1,25 @@
+bin/standalone.sh -c standalone-capedwarf.xml -Ddisable.blacklist=true -Djboss.bind.address=172.16.3.4
+
+
+
+
+  <distributed-cache name="memcache" mode="ASYNC" owners="1">
+                    <transaction mode="NON_XA" locking="PESSIMISTIC"/>
+                    <eviction strategy="LIRS" max-entries="10000"/>
+                    <file-store preload="false" purge="false"/>
+  		    
+	 	</distributed-cache>
+	 	
+	 	
+	 	
+su
+sed "s/listen_address: 172.16.3.4/listen_address: 172.16.3.9/" /etc/cassandra/default.conf/cassandra.yaml >/tmp/cassandra.yaml
+mv /tmp/cassandra.yaml /etc/cassandra/default.conf/cassandra.yaml
+rm -rf /var/lib/cassandra
+mkdir /var/lib/cassandra
+chown cassandra /var/lib/cassandra
+reboot
+
+for i in Dist* ; do pushd $i; mvn clean install; popd ; done
+
+for i in $(seq 6); do scp Dist$i/target/Dist$i-1.0-SNAPSHOT.war 172.16.3.$((3+$i)):/home/ec2-user/jboss-as-7.2.0.Final/standalone/deployments/ROOT.war;done

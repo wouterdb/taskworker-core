@@ -23,14 +23,19 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import com.google.appengine.api.taskqueue.TaskHandle;
 
 import drm.taskworker.queue.Queue;
+import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
@@ -175,6 +180,9 @@ public abstract class Worker implements Runnable {
 										+ newTask.getWorker() + " on worker "
 										+ this.name);
 							}
+							if (task.getTaskType().equals("end")) {
+								removeFromSchedule(task);
+							}
 						}
 					} else {
 						logger.info("Task " + task.toString() + " failed with "
@@ -209,5 +217,25 @@ public abstract class Worker implements Runnable {
 				logger.log(Level.SEVERE,getName()+" failed",e);
 			}
 		}
+	}
+
+	private void removeFromSchedule(AbstractTask task) {
+		Service svc = Service.get();
+		WeightedRoundRobin wrr = svc.getPriorities(this.name);
+		int i = 0;
+		UUID workflowId = task.getWorkflowId();
+		String[] names = wrr.getNames();
+		for (; i < names.length; i++) {
+			if(names.equals(workflowId.toString()))
+				break;
+		}
+		if(i==names.length)
+			return;
+		int size =  names.length;
+		
+		float[] weights = new float[size-1];
+		Arrays.fill(weights, 1.0f);
+		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(wrr.getNames(),i),weights);
+		svc.setPriorities(this.name, wrr);
 	}
 }

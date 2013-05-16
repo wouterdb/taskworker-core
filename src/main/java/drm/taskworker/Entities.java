@@ -90,8 +90,8 @@ public class Entities {
 
 	private static Keyspace setupCassandra() {
 		String seed = System.getProperty("dreamaas.cassandra.seed");
-		if(seed == null || seed.isEmpty())
-			seed="127.0.0.1";
+		if (seed == null || seed.isEmpty())
+			seed = "127.0.0.1";
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
 				.forCluster("Test Cluster")
 				.forKeyspace("taskworker")
@@ -104,8 +104,7 @@ public class Entities {
 				.withConnectionPoolConfiguration(
 						new ConnectionPoolConfigurationImpl(
 								"TaskWorkerConnectionPool").setPort(9160)
-								.setMaxConnsPerHost(1)
-								.setSeeds(seed))
+								.setMaxConnsPerHost(1).setSeeds(seed))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 
@@ -119,37 +118,48 @@ public class Entities {
 			try {
 				createKeyspace(ks);
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
-					.execute();
+						.withCql(
+								"CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
+						.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
-					.execute();
+						.withCql(
+								"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
+						.execute();
 
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
-					.execute();
-				
-				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE INDEX task_parent_id ON task_parent (parent_id)")
-					.execute();
-				
-				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
-					.execute();
-				
-				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
-					.execute();
-				
-				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE INDEX job_started ON job (started)")
-					.execute();
+						.withCql(
+								"CREATE TABLE taskqueue (id uuid, workflow_id uuid, worker_name text, lease timestamp, lockid uuid, end boolean, PRIMARY KEY (workflow_id, worker_name, id))")
+						.execute();
 			
 				ks.prepareQuery(CF_STANDARD1)
-					.withCql("CREATE INDEX job_finished ON job (finished)")
-					.execute();
-				
+						.withCql(
+								"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
+						.execute();
+
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql(
+								"CREATE INDEX task_parent_id ON task_parent (parent_id)")
+						.execute();
+
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql(
+								"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
+						.execute();
+
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql(
+								"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
+						.execute();
+
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql("CREATE INDEX job_started ON job (started)")
+						.execute();
+
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql("CREATE INDEX job_finished ON job (finished)")
+						.execute();
+
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");
 				throw new IllegalStateException(ee);
@@ -172,21 +182,22 @@ public class Entities {
 		@Override
 		public ByteBuffer toByteBuffer(T obj) {
 			Yaml x = new Yaml();
-			
+
 			ByteBufferOutputStream out = new ByteBufferOutputStream();
-			
+
 			Writer w = new OutputStreamWriter(out);
-			x.dump(obj,w);
-			
+			x.dump(obj, w);
+
 			return out.getByteBuffer();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public T fromByteBuffer(ByteBuffer byteBuffer) {
-			
+
 			Yaml x = new Yaml();
-			ByteArrayInputStream in = new ByteArrayInputStream(byteBuffer.array());
+			ByteArrayInputStream in = new ByteArrayInputStream(
+					byteBuffer.array());
 			return (T) x.load(in);
 		}
 	}

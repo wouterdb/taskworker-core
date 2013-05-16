@@ -47,4 +47,11 @@ public class EndTask extends AbstractTask {
 	public String getTaskType() {
 		return "end";
 	}
+
+	@Override
+	public String toString() {
+		return String.format(
+				"EndTask [workflow=%s, id=%s, worker=%s]",
+				getWorkflowId(), getId(), getWorker());
+	}
 }

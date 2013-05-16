@@ -15,7 +15,7 @@
 
     Administrative Contact: dnet-project-office@cs.kuleuven.be
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
-*/
+ */
 
 package drm.taskworker.tasks;
 
@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.Set;
 
@@ -41,78 +42,99 @@ import drm.taskworker.Entities;
 
 /**
  * A task that needs to be executed by a worker
- *
+ * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Task extends AbstractTask {
-	private Map<String,Object> params = new HashMap<String, Object>();
+	private Map<String, Object> params;
 	private transient TimerContext timer;
 
 	/**
 	 * Create a task for a worker
 	 * 
-	 * @param parent The parent of this task
-	 * @param worker The name of the worker
+	 * @param parent
+	 *            The parent of this task
+	 * @param worker
+	 *            The name of the worker
 	 */
 	public Task(AbstractTask parent, String worker) {
 		super(parent.getWorkflow(), parent, worker);
 	}
-	
+
 	/**
 	 * Create a task for a worker
 	 * 
-	 * @param parents The parents of this task, this collection should contain
-	 * 		at least one parent.
-	 * @param worker The name of the worker
+	 * @param parents
+	 *            The parents of this task, this collection should contain at
+	 *            least one parent.
+	 * @param worker
+	 *            The name of the worker
 	 */
 	public Task(List<AbstractTask> parents, String worker) {
 		super(parents, worker);
 	}
-	
+
 	/**
 	 * Constructor for persistence
 	 */
-	Task() { super(); }
-	
+	Task() {
+		super();
+	}
+
 	/**
 	 * Create a task that starts the workflow.
+	 * 
 	 * @param workflow
 	 * @param worker
 	 */
 	public Task(WorkflowInstance workflow, String worker) {
 		this(workflow, null, worker);
 	}
-	
+
 	/**
 	 * Create a task for a worker
 	 * 
-	 * @param parent The parent of this task
-	 * @param worker The name of the worker
+	 * @param parent
+	 *            The parent of this task
+	 * @param worker
+	 *            The name of the worker
 	 */
 	protected Task(WorkflowInstance workflow, AbstractTask parent, String worker) {
 		super(workflow, parent, worker);
 	}
-	
+
+
+	public Task(AbstractTask one, List<UUID> parents, String worker) {
+		super(one,parents,worker);
+	}
+
 	/**
 	 * Add a parameter to the task
 	 * 
-	 * @param name The name of the parameter
-	 * @param value The value of the parameter
+	 * @param name
+	 *            The name of the parameter
+	 * @param value
+	 *            The value of the parameter
 	 */
 	public void addParam(String name, Object value) {
+		if(params==null)
+			loadParameters();
 		this.params.put(name, value);
 	}
-	
+
 	/**
-	 * Get a parameter with the given name. 
+	 * Get a parameter with the given name.
 	 * 
-	 * @param name The name of the parameter
+	 * @param name
+	 *            The name of the parameter
 	 * @return The value
 	 */
 	public Object getParam(String name) {
+		if(params==null)
+			loadParameters();
 		return this.params.get(name);
 	}
-	
+
 	/**
 	 * Check if a parameter exists
 	 * 
@@ -122,7 +144,7 @@ public class Task extends AbstractTask {
 	public boolean hasParam(String name) {
 		return this.params.containsKey(name);
 	}
-	
+
 	/**
 	 * Get a set of parameter names.
 	 * 
@@ -136,7 +158,7 @@ public class Task extends AbstractTask {
 	public String getTaskType() {
 		return "work";
 	}
-	
+
 	public void setStartedAt() {
 		timer = Metrics.newTimer(getClass(), getWorker()).time();
 		super.setStartedAt();
@@ -152,44 +174,56 @@ public class Task extends AbstractTask {
 	 */
 	public void save() {
 		super.save();
-		
+
 		try {
 			for (Entry<String, Object> param : params.entrySet()) {
 				cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("INSERT INTO parameter (task_id, name, value) " + 
-								" VALUES (?, ?, ?);")
-					.asPreparedStatement()
-					.withUUIDValue(this.getId())
-					.withStringValue(param.getKey())
-					.withByteBufferValue(param.getValue(), ObjectSerializer.get())
-					.execute();
+						.withCql(
+								"INSERT INTO parameter (task_id, name, value) "
+										+ " VALUES (?, ?, ?);")
+						.asPreparedStatement()
+						.withUUIDValue(this.getId())
+						.withStringValue(param.getKey())
+						.withByteBufferValue(param.getValue(),
+								ObjectSerializer.get()).execute();
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Load the parameters of this task from the database
 	 */
 	public void loadParameters() {
+		params = new HashMap<String, Object>();
 		try {
-			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT * FROM parameter WHERE task_id = ?")
-				.asPreparedStatement()
-				.withUUIDValue(this.getId())
-				.execute();
-			
+			OperationResult<CqlResult<String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM parameter WHERE task_id = ?")
+					.asPreparedStatement().withUUIDValue(this.getId())
+					.execute();
+
 			for (Row<String, String> row : result.getResult().getRows()) {
 				ColumnList<String> columns = row.getColumns();
-				
+
 				String name = columns.getStringValue("name", null);
-				Object value = ObjectSerializer.get().fromByteBuffer(columns.getByteBufferValue("value", null));
-				
+				Object value = ObjectSerializer.get().fromByteBuffer(
+						columns.getByteBufferValue("value", null));
+
 				this.addParam(name, value);
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}
 	}
+
+	@Override
+	public String toString() {
+		return String.format("Task [workflow=%s, id=%s, worker=%s, params=%s]",
+				getWorkflowId(), getId(), getWorker(), params);
+	}
+
+	
+
 }

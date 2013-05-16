@@ -35,11 +35,13 @@ import org.apache.commons.lang.ArrayUtils;
 import com.google.appengine.api.taskqueue.TaskHandle;
 
 import drm.taskworker.queue.Queue;
+import drm.taskworker.queue.WorkflowTask;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
+import drm.taskworker.tasks.TaskResult.Result;
 
 /**
  * A work class that fetches work from a pull queue
@@ -74,6 +76,9 @@ public abstract class Worker implements Runnable {
 	public Worker(String name) {
 		this.name = name;
 		logger.info("Worker started with name " + this.name);
+
+		// timing/loading issue
+		new WorkflowTask();
 	}
 
 	/**
@@ -123,36 +128,39 @@ public abstract class Worker implements Runnable {
 
 		while (this.working) {
 			try {
-				TaskHandle handle = svc.getTask(this.name);
+				AbstractTask task = svc.getTask(this.name);
 
-				if (handle != null) {
-					ObjectInputStream ois = new ObjectInputStream(
-							new ByteArrayInputStream(handle.getPayload()));
-					AbstractTask task = (AbstractTask) ois.readObject();
-					ois.close();
-
-					logger.info("Fetched task " + task.toString() + " for "
-							+ this.name + " with id " + handle.getName());
+				if (task != null) {
+					
+					trace("FETCHED",task);
 
 					// execute the task
 					TaskResult result = null;
 					task.setStartedAt();
-					if (task.getTaskType().equals("work")) {
-						result = this.work((Task) task);
+					try {
+						if (task.getTaskType().equals("work")) {
+							result = this.work((Task) task);
 
-					} else if (task.getTaskType().equals("end")) {
-						/*
-						 * This is an end task. If we get this task, we need to
-						 * ensure that all other tasks of this workflow have
-						 * been finished.
-						 * 
-						 * TODO: implement this
-						 */
-						result = this.work((EndTask) task);
-					} else {
-						logger.warning("Task type " + task.getTaskType()
-								+ " not known.");
-						continue;
+						} else if (task.getTaskType().equals("end")) {
+							/*
+							 * This is an end task. If we get this task, we need
+							 * to ensure that all other tasks of this workflow
+							 * have been finished.
+							 * 
+							 * TODO: implement this
+							 */
+							result = this.work((EndTask) task);
+						} else {
+							logger.warning("Task type " + task.getTaskType()
+									+ " not known.");
+							continue;
+						}
+
+					} catch (Exception e) {
+						result= new TaskResult();
+						
+						result.setException(e);
+						result.setResult(Result.EXCEPTION);
 					}
 					task.setFinishedAt();
 					task.saveTiming();
@@ -163,6 +171,7 @@ public abstract class Worker implements Runnable {
 					}
 
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
+						trace("DONE",task);
 						if (this.getName().equals(
 								task.getWorkflow().getWorkflowConfig()
 										.getWorkflowEnd())) {
@@ -172,29 +181,24 @@ public abstract class Worker implements Runnable {
 								svc.workflowFinished(task,
 										result.getNextTasks());
 							}
-							
+
 						} else {
 							for (AbstractTask newTask : result.getNextTasks()) {
 								svc.queueTask(newTask);
-								logger.info("New task for "
-										+ newTask.getWorker() + " on worker "
-										+ this.name);
+								trace("NEW",newTask);
 							}
 							if (task.getTaskType().equals("end")) {
 								removeFromSchedule(task);
 							}
 						}
 					} else {
-						logger.info("Task " + task.toString() + " failed with "
-								+ result.getResult().toString() + " on "
-								+ this.name);
-
+						trace("FAILED",task);
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();
 						}
 					}
-					svc.deleteTask(handle);
-
+					svc.deleteTask(task);
+					
 					sleepTime = sleepTime - 10;
 					if (sleepTime < 0) {
 						sleepTime = 0;
@@ -207,16 +211,15 @@ public abstract class Worker implements Runnable {
 				}
 
 				Thread.sleep(sleepTime);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch(Exception e){
-				logger.log(Level.SEVERE,getName()+" failed",e);
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, getName() + " failed", e);
+
 			}
 		}
+	}
+
+	private void trace(String cmd, AbstractTask task) {
+		logger.info(String.format("[%s] %s %s", this.name, cmd, task.toString()));
 	}
 
 	private void removeFromSchedule(AbstractTask task) {
@@ -226,16 +229,17 @@ public abstract class Worker implements Runnable {
 		UUID workflowId = task.getWorkflowId();
 		String[] names = wrr.getNames();
 		for (; i < names.length; i++) {
-			if(names.equals(workflowId.toString()))
+			if (names[i].equals(workflowId.toString()))
 				break;
 		}
-		if(i==names.length)
+		if (i == names.length)
 			return;
-		int size =  names.length;
-		
-		float[] weights = new float[size-1];
+		int size = names.length;
+
+		float[] weights = new float[size - 1];
 		Arrays.fill(weights, 1.0f);
-		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(wrr.getNames(),i),weights);
+		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(
+				wrr.getNames(), i), weights);
 		svc.setPriorities(this.name, wrr);
 	}
 }

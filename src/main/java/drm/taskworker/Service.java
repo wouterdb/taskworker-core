@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -32,6 +33,7 @@ import org.apache.cassandra.service.CacheService;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
 import com.google.appengine.api.taskqueue.TaskHandle;
+import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 
 import drm.taskworker.queue.Queue;
 import drm.taskworker.schedule.WeightedRoundRobin;
@@ -40,6 +42,7 @@ import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.WorkFlowStateListener;
 import drm.taskworker.tasks.WorkflowInstance;
+import drm.util.Triplet;
 
 /**
  * This class implements a workflow service. This service should be stateless
@@ -56,12 +59,13 @@ public class Service {
 	/*
 	 * ThreadLocal instance of the workflow service
 	 */
-//	private static final ThreadLocal<Service> serviceInstance = new ThreadLocal<Service>() {
-//		@Override
-//		protected Service initialValue() {
-//			return new Service();
-//		}
-//	};
+	// private static final ThreadLocal<Service> serviceInstance = new
+	// ThreadLocal<Service>() {
+	// @Override
+	// protected Service initialValue() {
+	// return new Service();
+	// }
+	// };
 
 	private static final String SCHEDULE = "drm.taskworker.service.scheduler.";
 
@@ -71,10 +75,10 @@ public class Service {
 	 * @return Return a new instance or a cache thread local instance
 	 */
 	public static Service get() {
-		return serviceInstance ;
+		return serviceInstance;
 	}
 
-	private Queue queue = new Queue("task-queue");
+	public Queue queue = new Queue("task-queue");
 
 	/**
 	 * Create a new instance of the workflow service.
@@ -122,13 +126,13 @@ public class Service {
 		// save the task
 		start.save();
 
-		//notify others
+		// notify others
 		synchronized (listeners) {
 			for (WorkFlowStateListener wfsl : listeners) {
 				wfsl.workflowStarted(workflow);
 			}
 		}
-		
+
 		// queue the task
 		this.queueTask(start);
 
@@ -169,15 +173,21 @@ public class Service {
 	 *            The type of worker
 	 * @return A task or null if no task available
 	 */
-	public TaskHandle getTask(String workflowId, String workerType) {
-		List<TaskHandle> tasks = queue.leaseTasks(10, TimeUnit.SECONDS, 1,
-				workerType, workflowId);
+	public AbstractTask getTask(UUID workflowId, String workerType) {
+		List<Triplet<UUID, UUID, String>> tasks;
+		try {
+			tasks = queue.leaseTasks(60, TimeUnit.SECONDS, 1, workerType,
+					workflowId);
 
-		// do work!
-		if (!tasks.isEmpty()) {
-			return tasks.get(0);
+			// do work!
+			if (!tasks.isEmpty()) {
+				Triplet<UUID, UUID, String> first = tasks.get(0);
+				return AbstractTask.load(first.getA(), first.getB());
+			}
+
+		} catch (ConnectionException e) {
+			throw new IllegalStateException(e);
 		}
-
 		return null;
 	}
 
@@ -189,21 +199,25 @@ public class Service {
 	 *            The type of worker
 	 * @return A task or null if no task available
 	 */
-	public TaskHandle getTask(String workerType) {
+	public AbstractTask getTask(String workerType) {
 
 		WeightedRoundRobin rrs = getPriorities(workerType);
 		if (rrs == null) {
-			logger.info("no scheduler for " + workerType);
+			logger.finest("no scheduler for " + workerType);
 			return getTask(null, workerType);
 		}
 
 		String workflow = rrs.getNext();
 
-		TaskHandle handle = getTask(workflow, workerType);
+		if (workflow == null) {
+			return getTask(null, workerType);
+		}
+		
+		AbstractTask handle = getTask(UUID.fromString(workflow), workerType);
 
-		if (handle == null && workflow!=null) {
-			
-			logger.info("scheduler missed (no work for: " + workflow + ", "
+		if (handle == null && workflow != null) {
+
+			logger.finest("scheduler missed (no work for: " + workflow + ", "
 					+ workerType + "), taking random");
 			// don't go on fishing expedition, just grab work, if any
 			return getTask(null, workerType);
@@ -219,8 +233,13 @@ public class Service {
 	 * @param handle
 	 *            A handle for the task that needs to be removed.
 	 */
-	public void deleteTask(TaskHandle handle) {
-		this.queue.deleteTask(handle);
+	public void deleteTask(AbstractTask handle) {
+		try {
+			this.queue.deleteTask(handle);
+		} catch (ConnectionException e) {
+			throw new java.lang.IllegalStateException(e);
+		}
+
 	}
 
 	/**
@@ -243,7 +262,7 @@ public class Service {
 		// TODO: store results
 		Job job = Job.load(wf.getWorkflowId());
 		job.markFinished();
-		
+
 		synchronized (listeners) {
 			for (WorkFlowStateListener wfsl : listeners) {
 				wfsl.workflowFinished(wf);
@@ -263,38 +282,35 @@ public class Service {
 	public void setPriorities(String workerType, WeightedRoundRobin rrs) {
 		cacheService.put(SCHEDULE + workerType, rrs);
 	}
-	
+
 	public WeightedRoundRobin getPriorities(String workerType) {
 		return (WeightedRoundRobin) cacheService.get(SCHEDULE + workerType);
 	}
-	
+
 	private List<WorkFlowStateListener> listeners = new LinkedList<>();
-	
+
 	/**
 	 * add a workflow listener
 	 * 
-	 * !! this is NOT distributed, the listener is local to this machine 
+	 * !! this is NOT distributed, the listener is local to this machine
 	 * 
 	 * @param list
 	 */
 	public void addWorkflowStateListener(WorkFlowStateListener list) {
-		synchronized(listeners){
+		synchronized (listeners) {
 			listeners.add(list);
 		}
 	}
-	
+
 	/**
 	 * remove a workflow listener
 	 * 
 	 * @param list
 	 */
 	public void removeWorkflowStateListener(WorkFlowStateListener list) {
-		synchronized(listeners){
+		synchronized (listeners) {
 			listeners.remove(list);
 		}
 	}
 
-	
-
-	
 }

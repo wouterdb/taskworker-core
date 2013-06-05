@@ -44,8 +44,8 @@ public class EndTask extends AbstractTask {
 	EndTask() { super(); }
 
 	@Override
-	public String getTaskType() {
-		return "end";
+	public int getTaskType() {
+		return 1;
 	}
 
 	@Override

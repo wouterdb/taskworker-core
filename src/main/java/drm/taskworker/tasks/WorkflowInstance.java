@@ -21,7 +21,6 @@ package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -32,8 +31,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-import com.google.appengine.api.taskqueue.Queue;
-import com.google.appengine.api.taskqueue.QueueFactory;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -53,8 +50,7 @@ import drm.taskworker.monitoring.Statistic;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class WorkflowInstance implements Serializable {
-	private static Logger logger = Logger.getLogger(Worker.class
-			.getCanonicalName());
+	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
 	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
 
 	private String name = null;

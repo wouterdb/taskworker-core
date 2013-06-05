@@ -22,16 +22,9 @@ package drm.taskworker.workers;
 import static drm.taskworker.Entities.cs;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
-import com.google.appengine.api.memcache.MemcacheService;
-import com.google.appengine.api.memcache.MemcacheServiceFactory;
-import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
@@ -39,7 +32,6 @@ import com.netflix.astyanax.model.Row;
 
 import drm.taskworker.Entities;
 import drm.taskworker.Worker;
-import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
@@ -103,7 +95,7 @@ public class JoinWorker extends Worker {
 		}
 		
 		// create a new task with all joined arguments
-		Task newTask = new Task(task,parents, this.getNextWorker());
+		Task newTask = new Task(task, parents, this.getNextWorker());
 		
 		result.addNextTask(newTask);
 		

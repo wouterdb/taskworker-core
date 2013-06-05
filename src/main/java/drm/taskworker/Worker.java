@@ -19,23 +19,13 @@
 
 package drm.taskworker;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.ArrayUtils;
 
-import com.google.appengine.api.taskqueue.TaskHandle;
-
-import drm.taskworker.queue.Queue;
-import drm.taskworker.queue.WorkflowTask;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
@@ -76,9 +66,6 @@ public abstract class Worker implements Runnable {
 	public Worker(String name) {
 		this.name = name;
 		logger.info("Worker started with name " + this.name);
-
-		// timing/loading issue
-		new WorkflowTask();
 	}
 
 	/**
@@ -124,7 +111,7 @@ public abstract class Worker implements Runnable {
 		logger.info("Started worker " + this.toString());
 
 		Service svc = Service.get();
-		int sleepTime = 10;
+		int sleepTime = 1000;
 
 		while (this.working) {
 			try {
@@ -138,17 +125,10 @@ public abstract class Worker implements Runnable {
 					TaskResult result = null;
 					task.setStartedAt();
 					try {
-						if (task.getTaskType().equals("work")) {
+						if (task.getTaskType() == 0) {
 							result = this.work((Task) task);
 
-						} else if (task.getTaskType().equals("end")) {
-							/*
-							 * This is an end task. If we get this task, we need
-							 * to ensure that all other tasks of this workflow
-							 * have been finished.
-							 * 
-							 * TODO: implement this
-							 */
+						} else if (task.getTaskType() == 1) {
 							result = this.work((EndTask) task);
 						} else {
 							logger.warning("Task type " + task.getTaskType()
@@ -157,7 +137,7 @@ public abstract class Worker implements Runnable {
 						}
 
 					} catch (Exception e) {
-						result= new TaskResult();
+						result = new TaskResult();
 						
 						result.setException(e);
 						result.setResult(Result.EXCEPTION);
@@ -170,16 +150,14 @@ public abstract class Worker implements Runnable {
 						continue;
 					}
 
+					// process the result
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						trace("DONE",task);
-						if (this.getName().equals(
-								task.getWorkflow().getWorkflowConfig()
-										.getWorkflowEnd())) {
+						if (this.getName().equals(task.getWorkflow().getWorkflowConfig().getWorkflowEnd())) {
 							// this is the end of the workflow
 							// if end-of-batch, signal end-of-job
-							if (task.getTaskType().equals("end")) {
-								svc.workflowFinished(task,
-										result.getNextTasks());
+							if (task.getTaskType() == 1) {
+								svc.workflowFinished(task, result.getNextTasks());
 							}
 
 						} else {
@@ -187,7 +165,7 @@ public abstract class Worker implements Runnable {
 								svc.queueTask(newTask);
 								trace("NEW",newTask);
 							}
-							if (task.getTaskType().equals("end")) {
+							if (task.getTaskType() == 1) {
 								removeFromSchedule(task);
 							}
 						}
@@ -199,15 +177,15 @@ public abstract class Worker implements Runnable {
 					}
 					svc.deleteTask(task);
 					
-					sleepTime = sleepTime - 10;
-					if (sleepTime < 0) {
-						sleepTime = 0;
-					}
+//					sleepTime = sleepTime - 10;
+//					if (sleepTime < 0) {
+//						sleepTime = 0;
+//					}
 				} else {
-					sleepTime += 10;
-					if (sleepTime > 200) {
-						sleepTime = 200;
-					}
+//					sleepTime += 10;
+//					if (sleepTime > 200) {
+//						sleepTime = 200;
+//					}
 				}
 
 				Thread.sleep(sleepTime);

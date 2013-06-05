@@ -25,9 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.UUID;
-import java.util.logging.Logger;
 import java.util.Set;
+import java.util.UUID;
 
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -46,7 +45,7 @@ import drm.taskworker.Entities;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Task extends AbstractTask {
-	private Map<String, Object> params;
+	private Map<String, Object> params = new HashMap<String, Object>();
 	private transient TimerContext timer;
 
 	/**
@@ -117,8 +116,9 @@ public class Task extends AbstractTask {
 	 *            The value of the parameter
 	 */
 	public void addParam(String name, Object value) {
-		if(params==null)
+		if(params == null) {
 			loadParameters();
+		}
 		this.params.put(name, value);
 	}
 
@@ -130,8 +130,9 @@ public class Task extends AbstractTask {
 	 * @return The value
 	 */
 	public Object getParam(String name) {
-		if(params==null)
+		if(params == null) {
 			loadParameters();
+		}
 		return this.params.get(name);
 	}
 
@@ -155,8 +156,8 @@ public class Task extends AbstractTask {
 	}
 
 	@Override
-	public String getTaskType() {
-		return "work";
+	public int getTaskType() {
+		return 0;
 	}
 
 	public void setStartedAt() {
@@ -178,9 +179,7 @@ public class Task extends AbstractTask {
 		try {
 			for (Entry<String, Object> param : params.entrySet()) {
 				cs().prepareQuery(Entities.CF_STANDARD1)
-						.withCql(
-								"INSERT INTO parameter (task_id, name, value) "
-										+ " VALUES (?, ?, ?);")
+						.withCql("INSERT INTO parameter (task_id, name, value) VALUES (?, ?, ?);")
 						.asPreparedStatement()
 						.withUUIDValue(this.getId())
 						.withStringValue(param.getKey())
@@ -196,7 +195,6 @@ public class Task extends AbstractTask {
 	 * Load the parameters of this task from the database
 	 */
 	public void loadParameters() {
-		params = new HashMap<String, Object>();
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)

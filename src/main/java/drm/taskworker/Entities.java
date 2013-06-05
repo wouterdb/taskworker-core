@@ -20,25 +20,13 @@
 package drm.taskworker;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 import java.util.logging.Logger;
-import java.util.zip.GZIPOutputStream;
 
-import org.apache.avro.util.ByteBufferInputStream;
-import org.apache.commons.codec.binary.StringUtils;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Construct;
-import org.yaml.snakeyaml.constructor.Constructor;
 
 import com.google.common.collect.ImmutableMap;
 import com.netflix.astyanax.AstyanaxContext;
@@ -52,9 +40,6 @@ import com.netflix.astyanax.impl.AstyanaxConfigurationImpl;
 import com.netflix.astyanax.model.ColumnFamily;
 import com.netflix.astyanax.serializers.AbstractSerializer;
 import com.netflix.astyanax.serializers.ByteBufferOutputStream;
-import com.netflix.astyanax.serializers.ComparatorType;
-import com.netflix.astyanax.serializers.CompositeSerializer;
-import com.netflix.astyanax.serializers.ObjectSerializer;
 import com.netflix.astyanax.serializers.StringSerializer;
 import com.netflix.astyanax.thrift.ThriftFamilyFactory;
 
@@ -74,37 +59,37 @@ public class Entities {
 	private static Keyspace cs = null;
 
 	public static ColumnFamily<String, String> CF_STANDARD1 = ColumnFamily
-			.newColumnFamily("Standard1", StringSerializer.get(),
-					StringSerializer.get());
+			.newColumnFamily("Standard1", StringSerializer.get(), StringSerializer.get());
 
 	private static void createKeyspace(Keyspace keyspace)
 			throws ConnectionException {
 		// Using simple strategy
-		keyspace.createKeyspace(ImmutableMap
-				.<String, Object> builder()
-				.put("strategy_options",
-						ImmutableMap.<String, Object> builder()
-								.put("replication_factor", "1").build())
-				.put("strategy_class", "SimpleStrategy").build());
+		keyspace.createKeyspace(ImmutableMap.<String, Object> builder()
+				.put("strategy_options", ImmutableMap.<String, Object> builder()
+						.put("replication_factor", "3").build())
+						.put("strategy_class", "SimpleStrategy").build());
+		
+		keyspace.createColumnFamily(CF_STANDARD1, ImmutableMap.<String, Object>builder()
+                .put("default_validation_class", "LongType")
+                .put("key_validation_class",     "UTF8Type")
+                .put("comparator_type",          "UTF8Type")
+                .build());
 	}
 
 	private static Keyspace setupCassandra() {
 		String seed = System.getProperty("dreamaas.cassandra.seed");
-		if (seed == null || seed.isEmpty())
+		if (seed == null || seed.isEmpty()) {
 			seed = "127.0.0.1";
+		}
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
-				.forCluster("Test Cluster")
-				.forKeyspace("taskworker")
-				.withAstyanaxConfiguration(
-						new AstyanaxConfigurationImpl()
-								.setDiscoveryType(
-										NodeDiscoveryType.RING_DESCRIBE)
-								.setCqlVersion("3.0.0")
-								.setTargetCassandraVersion("1.2"))
+			.forCluster("Test Cluster").forKeyspace("taskworker")
+			.withAstyanaxConfiguration(new AstyanaxConfigurationImpl()
+				.setDiscoveryType(NodeDiscoveryType.RING_DESCRIBE)
+				.setCqlVersion("3.0.0").setTargetCassandraVersion("1.2"))
 				.withConnectionPoolConfiguration(
-						new ConnectionPoolConfigurationImpl(
-								"TaskWorkerConnectionPool").setPort(9160)
-								.setMaxConnsPerHost(1).setSeeds(seed))
+					new ConnectionPoolConfigurationImpl(
+						"TaskWorkerConnectionPool").setPort(9160)
+						.setMaxConnsPerHost(1).setSeeds(seed))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 
@@ -117,47 +102,49 @@ public class Entities {
 		} catch (ConnectionException e) {
 			try {
 				createKeyspace(ks);
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type text, worker_name text, PRIMARY KEY (workflow_id, id))")
+				/*
+				 * type:
+				 * 			0 - normal task
+				 * 			1 - end task
+				 * 
+				 * state:
+				 * 			0 - not scheduled
+				 * 			1 - scheduled
+				 * 			2 - running
+				 * 			3 - finished
+				 */
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type int, worker_name text, state int, PRIMARY KEY (workflow_id, id, worker_name, type))")
+						.execute();
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE INDEX task_state ON task (state)").execute();
+
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE taskqueue (id uuid, workflow_id uuid, worker_name text, lease timestamp, lockid uuid, end boolean, PRIMARY KEY (workflow_id, worker_name, id))")
-						.execute();
-			
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE INDEX task_parent_id ON task_parent (parent_id)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE INDEX task_parent_id ON task_parent (parent_id)")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql(
-								"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE INDEX job_started ON job (started)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql("CREATE INDEX job_started ON job (started)")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1)
-						.withCql("CREATE INDEX job_finished ON job (finished)")
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE INDEX job_finished ON job (finished)")
 						.execute();
 
 			} catch (ConnectionException ee) {
@@ -176,7 +163,7 @@ public class Entities {
 
 		return cs;
 	}
-
+	
 	public static class YamlSerialiser<T> extends AbstractSerializer<T> {
 
 		@Override

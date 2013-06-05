@@ -20,19 +20,14 @@
 package drm.taskworker;
 
 import java.util.Date;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import org.apache.cassandra.scheduler.RoundRobinScheduler;
-import org.apache.cassandra.service.CacheService;
-
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
-import com.google.appengine.api.taskqueue.TaskHandle;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 
 import drm.taskworker.queue.Queue;
@@ -120,11 +115,11 @@ public class Service {
 		WorkflowInstance workflow = job.getWorkflow();
 		Task start = job.getStartTask();
 
-		// save the workflow
-		workflow.save();
-
-		// save the task
-		start.save();
+//		// save the workflow
+//		workflow.save();
+//
+//		// save the task
+//		start.save();
 
 		// notify others
 		synchronized (listeners) {
@@ -157,10 +152,8 @@ public class Service {
 	 *            The task to queue
 	 */
 	public void queueTask(AbstractTask task) {
-		// queue the task
-		queue.add(task);
-
-		// save the task
+		// set the task as scheduled
+		task.setTaskState(1);
 		task.save();
 	}
 
@@ -176,8 +169,7 @@ public class Service {
 	public AbstractTask getTask(UUID workflowId, String workerType) {
 		List<Triplet<UUID, UUID, String>> tasks;
 		try {
-			tasks = queue.leaseTasks(60, TimeUnit.SECONDS, 1, workerType,
-					workflowId);
+			tasks = queue.leaseTasks(60, TimeUnit.SECONDS, 1, workerType, workflowId);
 
 			// do work!
 			if (!tasks.isEmpty()) {
@@ -188,6 +180,7 @@ public class Service {
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
 		}
+		
 		return null;
 	}
 
@@ -234,12 +227,7 @@ public class Service {
 	 *            A handle for the task that needs to be removed.
 	 */
 	public void deleteTask(AbstractTask handle) {
-		try {
-			this.queue.deleteTask(handle);
-		} catch (ConnectionException e) {
-			throw new java.lang.IllegalStateException(e);
-		}
-
+		//this.queue.finishTask(handle);
 	}
 
 	/**
@@ -253,7 +241,7 @@ public class Service {
 
 		logger.info("Workflow " + wf.getWorkflowId() + " was finished");
 
-		if (task.getTaskType().equals("end")) {
+		if (task.getTaskType() == 1) {
 			wf.setFinishedAt(new Date());
 		}
 

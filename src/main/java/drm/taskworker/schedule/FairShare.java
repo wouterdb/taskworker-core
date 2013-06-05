@@ -25,11 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.cassandra.scheduler.RoundRobinScheduler;
-
-import com.google.appengine.api.memcache.MemcacheService;
-import com.google.appengine.api.memcache.MemcacheServiceFactory;
-
 import drm.taskworker.Service;
 import drm.taskworker.config.Config;
 import drm.taskworker.tasks.WorkFlowStateListener;

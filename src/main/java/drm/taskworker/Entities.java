@@ -64,10 +64,13 @@ public class Entities {
 	private static void createKeyspace(Keyspace keyspace)
 			throws ConnectionException {
 		// Using simple strategy
-		keyspace.createKeyspace(ImmutableMap.<String, Object> builder()
-				.put("strategy_options", ImmutableMap.<String, Object> builder()
-						.put("replication_factor", "3").build())
-						.put("strategy_class", "SimpleStrategy").build());
+		keyspace.createKeyspace((ImmutableMap.<String, Object>builder()
+				.put("strategy_options", ImmutableMap.<String, Object>builder()
+						.put("datacenter1", "3")
+			            .build())
+			        .put("strategy_class",     "NetworkTopologyStrategy")
+			        .build())
+		);
 		
 		keyspace.createColumnFamily(CF_STANDARD1, ImmutableMap.<String, Object>builder()
                 .put("default_validation_class", "LongType")
@@ -76,20 +79,22 @@ public class Entities {
                 .build());
 	}
 
-	private static Keyspace setupCassandra() {
+	private static synchronized Keyspace setupCassandra() {
 		String seed = System.getProperty("dreamaas.cassandra.seed");
 		if (seed == null || seed.isEmpty()) {
 			seed = "127.0.0.1";
 		}
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
-			.forCluster("Test Cluster").forKeyspace("taskworker")
+			.forCluster("Test Cluster").
+			forKeyspace("taskworker")
 			.withAstyanaxConfiguration(new AstyanaxConfigurationImpl()
 				.setDiscoveryType(NodeDiscoveryType.RING_DESCRIBE)
 				.setCqlVersion("3.0.0").setTargetCassandraVersion("1.2"))
 				.withConnectionPoolConfiguration(
-					new ConnectionPoolConfigurationImpl(
-						"TaskWorkerConnectionPool").setPort(9160)
-						.setMaxConnsPerHost(1).setSeeds(seed))
+					new ConnectionPoolConfigurationImpl("TaskWorkerConnectionPool")
+						.setPort(9160)
+						.setMaxConnsPerHost(1)
+						.setSeeds(seed))
 				.withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 
@@ -110,18 +115,22 @@ public class Entities {
 				 * type:
 				 * 			0 - normal task
 				 * 			1 - end task
-				 * 
-				 * state:
-				 * 			0 - not scheduled
-				 * 			1 - scheduled
-				 * 			2 - running
-				 * 			3 - finished
+				 * 			100 - deleted
 				 */
 				ks.prepareQuery(CF_STANDARD1).withCql(
-						"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, started_at timestamp, finished_at timestamp, type int, worker_name text, state int, PRIMARY KEY (workflow_id, id, worker_name, type))")
+						"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (workflow_id, id))")
 						.execute();
 				ks.prepareQuery(CF_STANDARD1).withCql(
-						"CREATE INDEX task_state ON task (state)").execute();
+						"CREATE INDEX task_worker ON task(worker_name)")
+						.execute();
+				
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE task_timing (id uuid, started_at timestamp, finished_at timestamp, PRIMARY KEY (id))")
+						.execute();
+				
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE task_queue (id uuid, workflow_id uuid, worker_name text, leased_until timestamp, type int, removed boolean, PRIMARY KEY(workflow_id, worker_name, type, id))")
+						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).withCql(
 						"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
@@ -146,7 +155,11 @@ public class Entities {
 				ks.prepareQuery(CF_STANDARD1).withCql(
 						"CREATE INDEX job_finished ON job (finished)")
 						.execute();
-
+				
+				ks.prepareQuery(CF_STANDARD1).withCql(
+						"CREATE TABLE priorities (workflow_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, workflow_id))")
+						.execute();
+				
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");
 				throw new IllegalStateException(ee);

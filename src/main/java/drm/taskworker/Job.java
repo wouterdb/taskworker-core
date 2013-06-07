@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -44,6 +46,8 @@ import drm.taskworker.tasks.WorkflowInstance;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Job implements Serializable {
+	private static Logger logger = Logger.getLogger(Job.class.getCanonicalName());
+	
 	private transient WorkflowInstance workflow;
 	private transient Task startTask;
 	private UUID workflowId;
@@ -245,7 +249,7 @@ public class Job implements Serializable {
 				.withLongValue(this.finishBefore)
 				.execute();
 		} catch (ConnectionException e) {
-			e.printStackTrace();
+			logger.log(Level.WARNING, "Unable to save job", e);
 		}
 	}
 	
@@ -264,7 +268,7 @@ public class Job implements Serializable {
 				return createJob(row);
 			}
 		} catch (ConnectionException e) {
-			e.printStackTrace();
+			logger.log(Level.WARNING, "Unable to load job", e);
 		}
 		return null;
 	}
@@ -278,7 +282,7 @@ public class Job implements Serializable {
 			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
 				.withCql("SELECT * FROM job WHERE started = false AND start_after < ?")
 				.asPreparedStatement()
-				.withLongValue(new Date().getTime())
+				.withLongValue(System.currentTimeMillis())
 				.execute();
 		
 			for (Row<String, String> row : result.getResult().getRows()) {
@@ -286,7 +290,7 @@ public class Job implements Serializable {
 			}
 			
 		} catch (ConnectionException e) {
-			e.printStackTrace();
+			logger.log(Level.WARNING, "Unable to fetch jobs", e);
 		}
 		return jobs;
 	}

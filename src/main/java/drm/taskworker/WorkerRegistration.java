@@ -26,8 +26,6 @@ import java.util.List;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
-import com.google.appengine.api.ThreadManager;
-
 import drm.taskworker.config.Config;
 
 /**
@@ -43,14 +41,18 @@ public class WorkerRegistration implements ServletContextListener {
 	}
 
 	private void addWorker(Worker worker) {
-		Thread thread = ThreadManager.createBackgroundThread(worker);
+		Thread thread = new Thread(worker);
+		thread.setDaemon(true);
 		this.background_threads.add(worker);
 		thread.start();
 	}
 
 	public void contextInitialized(ServletContextEvent event) {
-		InputStream input = event.getServletContext().getResourceAsStream(
-				"/WEB-INF/workers.yaml");
+		// first ensure that the keyspace exists
+		Entities.cs();
+		
+		// now start the workflow engine
+		InputStream input = event.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml");
 		Config config = Config.loadConfig(input);
 
 		if (config.getScheduler() != null) {
@@ -59,27 +61,25 @@ public class WorkerRegistration implements ServletContextListener {
 			config.getScheduler().create();
 
 			// start a thread to manage the queue service
-			Thread thread = ThreadManager
-					.createBackgroundThread(new Runnable() {
+			Thread thread = new Thread(new Runnable() {
 						@Override
 						public void run() {
 							while (true) {
 								Service.get().startJobs();
 								try {
-									Thread.sleep(100);
+									Thread.sleep(2000);
 								} catch (InterruptedException e) {
 									e.printStackTrace();
 								}
 							}
 						}
 					});
-
+			
+			thread.setDaemon(true);
 			thread.start();
-
 		}
 
-		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers()
-				.values()) {
+		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}

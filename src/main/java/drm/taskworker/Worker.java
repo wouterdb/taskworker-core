@@ -36,8 +36,7 @@ import drm.taskworker.tasks.TaskResult.Result;
 /**
  * A work class that fetches work from a pull queue
  * 
- * TODO: add workflow abort TODO: mark jobs in the database as started and
- * finished
+ * TODO: add workflow abort 
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
@@ -111,7 +110,7 @@ public abstract class Worker implements Runnable {
 		logger.info("Started worker " + this.toString());
 
 		Service svc = Service.get();
-		int sleepTime = 1000;
+		int sleepTime = 200;
 
 		while (this.working) {
 			try {
@@ -131,8 +130,7 @@ public abstract class Worker implements Runnable {
 						} else if (task.getTaskType() == 1) {
 							result = this.work((EndTask) task);
 						} else {
-							logger.warning("Task type " + task.getTaskType()
-									+ " not known.");
+							logger.warning("Task type " + task.getTaskType() + " not known.");
 							continue;
 						}
 
@@ -152,40 +150,40 @@ public abstract class Worker implements Runnable {
 
 					// process the result
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
-						trace("DONE",task);
+						trace("DONE", task);
 						if (this.getName().equals(task.getWorkflow().getWorkflowConfig().getWorkflowEnd())) {
 							// this is the end of the workflow
 							// if end-of-batch, signal end-of-job
 							if (task.getTaskType() == 1) {
 								svc.workflowFinished(task, result.getNextTasks());
 							}
-
 						} else {
 							for (AbstractTask newTask : result.getNextTasks()) {
 								svc.queueTask(newTask);
-								trace("NEW",newTask);
+								trace("NEW", newTask);
 							}
 							if (task.getTaskType() == 1) {
 								removeFromSchedule(task);
 							}
 						}
+						svc.deleteTask(task);
+						
 					} else {
-						trace("FAILED",task);
+						trace("FAILED", task);
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();
 						}
 					}
-					svc.deleteTask(task);
 					
-//					sleepTime = sleepTime - 10;
-//					if (sleepTime < 0) {
-//						sleepTime = 0;
-//					}
+					sleepTime = sleepTime - 10;
+					if (sleepTime < 0) {
+						sleepTime = 0;
+					}
 				} else {
-//					sleepTime += 10;
-//					if (sleepTime > 200) {
-//						sleepTime = 200;
-//					}
+					sleepTime += 10;
+					if (sleepTime > 200) {
+						sleepTime = 200;
+					}
 				}
 
 				Thread.sleep(sleepTime);
@@ -200,6 +198,12 @@ public abstract class Worker implements Runnable {
 		logger.info(String.format("[%s] %s %s", this.name, cmd, task.toString()));
 	}
 
+	/**
+	 * This method is called when an endtask has been processed. It removes 
+	 * the workflow for the current worker from the priorities table.
+	 * 
+	 * @param task
+	 */
 	private void removeFromSchedule(AbstractTask task) {
 		Service svc = Service.get();
 		WeightedRoundRobin wrr = svc.getPriorities(this.name);
@@ -218,6 +222,7 @@ public abstract class Worker implements Runnable {
 		Arrays.fill(weights, 1.0f);
 		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(
 				wrr.getNames(), i), weights);
+		
 		svc.setPriorities(this.name, wrr);
 	}
 }

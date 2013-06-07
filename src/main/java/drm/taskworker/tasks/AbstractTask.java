@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
-import com.google.appengine.api.taskqueue.TaskOptions;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -62,15 +61,6 @@ public abstract class AbstractTask implements Serializable {
 	//private Date lease;
 	private List<AbstractTask> parents;
 	
-	/*
-	 * Task state:
-	 *		0 - not scheduled
-	 *		1 - scheduled
-	 *		2 - running
-	 *  	3 - finished
-	 */
-	private int taskState = 0;
-
 	/**
 	 * Create a task for a worker
 	 * 
@@ -149,14 +139,6 @@ public abstract class AbstractTask implements Serializable {
 		this.parentIds = new LinkedList<>();
 	}
 
-	public int getTaskState() {
-		return taskState;
-	}
-
-	public void setTaskState(int taskState) {
-		this.taskState = taskState;
-	}
-
 	/**
 	 * Get the id of this task.
 	 */
@@ -172,28 +154,6 @@ public abstract class AbstractTask implements Serializable {
 	 * 		1 : an end task
 	 */
 	public abstract int getTaskType();
-
-	/**
-	 * Convert this task to a taskoption object.
-	 * 
-	 * @return
-	 */
-	public TaskOptions toTaskOption() throws IOException {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutputStream oos = new ObjectOutputStream(bos);
-		oos.writeObject(this);
-
-		TaskOptions to = TaskOptions.Builder
-				.withMethod(TaskOptions.Method.PULL);
-		to.payload(bos.toByteArray());
-
-		oos.close();
-		bos.close();
-
-		to.tag(this.getWorker());
-
-		return to;
-	}
 
 	/**
 	 * Get the name of the work to send the task to.
@@ -232,6 +192,9 @@ public abstract class AbstractTask implements Serializable {
 	 * @return the startedAt
 	 */
 	public Date getStartedAt() {
+		if (startedAt == null) {
+			this.loadTiming();
+		}
 		return startedAt;
 	}
 
@@ -246,7 +209,9 @@ public abstract class AbstractTask implements Serializable {
 	 * @return the finishedAt
 	 */
 	public Date getFinishedAt() {
-
+		if (finishedAt == null) {
+			this.loadTiming();
+		}
 		return finishedAt;
 	}
 
@@ -269,14 +234,13 @@ public abstract class AbstractTask implements Serializable {
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
-							"INSERT INTO task (id, created_at, started_at, finished_at, type, worker_name, workflow_id, state) "
-									+ " VALUES (?, ?, 0, 0, ?, ?, ?, ?);")
+							"INSERT INTO task (id, created_at, type, worker_name, workflow_id) "
+									+ " VALUES (?, ?, ?, ?, ?);")
 					.asPreparedStatement().withUUIDValue(this.getId()) // id
 					.withLongValue(this.createdAt.getTime()) // created_at
 					.withIntegerValue(this.getTaskType()) // type
 					.withStringValue(this.getWorker()) // worker_name
 					.withUUIDValue(this.getWorkflowId()) // workflow_id
-					.withIntegerValue(this.getTaskState()) // state -> not scheduled
 					.execute();
 
 			// now save the list of parents
@@ -305,8 +269,11 @@ public abstract class AbstractTask implements Serializable {
 	 * Load a task from the database
 	 */
 	public static AbstractTask load(UUID workflowID, UUID id) {
+		if (workflowID == null || id == null) {
+			throw new IllegalArgumentException();
+		}
 		try {
-			OperationResult<CqlResult<String, String>> result = cs()
+			OperationResult<CqlResult<	String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
 							"SELECT * FROM task WHERE workflow_id = ? AND id = ?;")
@@ -317,7 +284,7 @@ public abstract class AbstractTask implements Serializable {
 				return createTaskFromDB(row);
 			}
 		} catch (ConnectionException e) {
-			e.printStackTrace();
+			
 		}
 		return null;
 	}
@@ -336,26 +303,43 @@ public abstract class AbstractTask implements Serializable {
 		task.taskId = columns.getUUIDValue("id", null);
 
 		task.createdAt = new Date(columns.getLongValue("created_at", 0L));
-		task.startedAt = new Date(columns.getLongValue("started_at", 0L));
-		//task.lease = new Date(columns.getLongValue("lease", 0L));
-		if (task.startedAt.getTime() == 0) {
-			task.startedAt = null;
-		}
-		task.finishedAt = new Date(columns.getLongValue("finished_at", 0L));
-		if (task.finishedAt.getTime() == 0) {
-			task.finishedAt = null;
-		}
 
 		task.setWorkflowId(columns.getUUIDValue("workflow_id", null));
 		task.worker = columns.getStringValue("worker_name", null);
-		task.taskState = columns.getIntegerValue("state", 0);
 
-		/*
-		 * if (task.getTaskType().equals("work")) { // load parameters
-		 * ((Task)task).loadParameters(); }
-		 */
+		
+		if (task.getTaskType() == 0) {
+			((Task)task).loadParameters(); 
+		}
 
 		return task;
+	}
+	
+	/**
+	 * Load the timing from the database
+	 */
+	private void loadTiming() {
+		try {
+			OperationResult<CqlResult<	String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM task_timing WHERE id = ?;")
+					.asPreparedStatement()
+					.withUUIDValue(this.getId())
+					.execute();
+
+			for (Row<String, String> row : result.getResult().getRows()) {
+				ColumnList<String> c = row.getColumns();
+				this.startedAt = new Date(c.getLongValue("started_at", 0L));
+				if (this.startedAt.getTime() == 0) {
+					this.startedAt = null;
+				}
+				this.finishedAt = new Date(c.getLongValue("finished_at", 0L));
+				if (this.finishedAt.getTime() == 0) {
+					this.finishedAt = null;
+				}			}
+		} catch (ConnectionException e) {
+			
+		}
 	}
 
 	/**
@@ -366,12 +350,11 @@ public abstract class AbstractTask implements Serializable {
 			Keyspace cs = cs();
 			cs.prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
-							"UPDATE task SET started_at = ?, finished_at = ?, state = 3 WHERE workflow_id = ? AND id = ?;")
+							"INSERT INTO task_timing (id, started_at, finished_at) VALUES (?, ?, ?)")
 					.asPreparedStatement()
+					.withUUIDValue(this.getId()) // id
 					.withLongValue(this.startedAt.getTime()) // started_at
 					.withLongValue(this.finishedAt.getTime()) // finished_at
-					.withUUIDValue(this.getWorkflowId()) // workflow_id
-					.withUUIDValue(this.getId()) // id
 					.execute();
 			
 		} catch (ConnectionException e) {
@@ -395,8 +378,9 @@ public abstract class AbstractTask implements Serializable {
 	}
 
 	public List<AbstractTask> getParents() {
-		if (parents == null)
+		if (parents == null) {
 			loadParents();
+		}
 		return parents;
 	}
 

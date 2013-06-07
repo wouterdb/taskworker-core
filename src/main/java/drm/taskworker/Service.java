@@ -19,25 +19,32 @@
 
 package drm.taskworker;
 
+import static drm.taskworker.Entities.cs;
+
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import com.google.appengine.api.memcache.MemcacheService;
-import com.google.appengine.api.memcache.MemcacheServiceFactory;
+import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.CqlResult;
+import com.netflix.astyanax.model.Row;
+import com.netflix.astyanax.model.Rows;
 
 import drm.taskworker.queue.Queue;
+import drm.taskworker.queue.TaskHandle;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.WorkFlowStateListener;
 import drm.taskworker.tasks.WorkflowInstance;
-import drm.util.Triplet;
 
 /**
  * This class implements a workflow service. This service should be stateless
@@ -46,23 +53,13 @@ import drm.util.Triplet;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Service {
-	private static Logger logger = Logger.getLogger(Worker.class
-			.getCanonicalName());
-
+	private static Logger logger = Logger.getLogger(Service.class.getCanonicalName());
 	private static Service serviceInstance = new Service();
-
-	/*
-	 * ThreadLocal instance of the workflow service
-	 */
-	// private static final ThreadLocal<Service> serviceInstance = new
-	// ThreadLocal<Service>() {
-	// @Override
-	// protected Service initialValue() {
-	// return new Service();
-	// }
-	// };
-
 	private static final String SCHEDULE = "drm.taskworker.service.scheduler.";
+	
+	private static final long INTERVAL = 60;
+	private Map<String, WeightedRoundRobin> priorities = new HashMap<>();
+	private Map<String, Long> timeout = new HashMap<>();
 
 	/**
 	 * Get an instance of the service
@@ -78,7 +75,7 @@ public class Service {
 	/**
 	 * Create a new instance of the workflow service.
 	 */
-	public Service() {
+	private Service() {
 	}
 
 	/**
@@ -153,7 +150,7 @@ public class Service {
 	 */
 	public void queueTask(AbstractTask task) {
 		// set the task as scheduled
-		task.setTaskState(1);
+		this.queue.addTask(task);
 		task.save();
 	}
 
@@ -167,16 +164,15 @@ public class Service {
 	 * @return A task or null if no task available
 	 */
 	public AbstractTask getTask(UUID workflowId, String workerType) {
-		List<Triplet<UUID, UUID, String>> tasks;
+		List<TaskHandle> tasks;
 		try {
 			tasks = queue.leaseTasks(60, TimeUnit.SECONDS, 1, workerType, workflowId);
 
 			// do work!
 			if (!tasks.isEmpty()) {
-				Triplet<UUID, UUID, String> first = tasks.get(0);
-				return AbstractTask.load(first.getA(), first.getB());
+				TaskHandle first = tasks.get(0);
+				return AbstractTask.load(first.getWorkflowID(), first.getId());
 			}
-
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
 		}
@@ -227,7 +223,7 @@ public class Service {
 	 *            A handle for the task that needs to be removed.
 	 */
 	public void deleteTask(AbstractTask handle) {
-		//this.queue.finishTask(handle);
+		this.queue.finishTask(handle);
 	}
 
 	/**
@@ -258,9 +254,6 @@ public class Service {
 		}
 	}
 
-	private MemcacheService cacheService = MemcacheServiceFactory
-			.getMemcacheService();
-
 	/**
 	 * set scheduling priorities for a specific worker type
 	 * 
@@ -268,11 +261,65 @@ public class Service {
 	 * @param rrs
 	 */
 	public void setPriorities(String workerType, WeightedRoundRobin rrs) {
-		cacheService.put(SCHEDULE + workerType, rrs);
+		try {
+			for (int i = 0; i < rrs.getLength(); i++) {
+				UUID workflowId = UUID.fromString(rrs.getName(i));
+				float weight = rrs.getWeight(i);
+				
+				cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE priorities SET weight = ? WHERE workflow_id = ? AND worker_type = ?")
+					.asPreparedStatement()
+					.withFloatValue(weight)
+					.withUUIDValue(workflowId)
+					.withStringValue(workerType)
+					.execute();
+			}
+			
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		this.priorities.put(workerType, rrs);
+		this.timeout.put(workerType, System.currentTimeMillis() + INTERVAL);
 	}
 
 	public WeightedRoundRobin getPriorities(String workerType) {
-		return (WeightedRoundRobin) cacheService.get(SCHEDULE + workerType);
+		if (this.priorities.containsKey(workerType) && this.timeout.get(workerType) > System.currentTimeMillis()) {
+			return this.priorities.get(workerType);
+		}
+		
+		// load the weight from cassandra
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM priorities WHERE worker_type = ?")
+				.asPreparedStatement()
+				.withStringValue(workerType)
+				.execute();
+			
+			Rows<String, String> rows = result.getResult().getRows();
+			
+			float[] weights = new float[rows.size()];
+			String[] names = new String[rows.size()];
+			
+			int i = 0;
+			for (Row<String, String> row : rows) {
+				ColumnList<String> columns = row.getColumns();
+				
+				weights[i] = columns.getColumnByName("weight").getFloatValue();
+				names[i] = columns.getColumnByName("workflow_id").getUUIDValue().toString();
+				i++;
+			}
+			
+			WeightedRoundRobin rrs = new WeightedRoundRobin(names, weights);
+			
+			this.priorities.put(workerType, rrs);
+			this.timeout.put(workerType, System.currentTimeMillis() + INTERVAL);
+			
+			return rrs;
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		
+		return new WeightedRoundRobin(new String[]{}, new float[]{});
 	}
 
 	private List<WorkFlowStateListener> listeners = new LinkedList<>();
@@ -300,5 +347,5 @@ public class Service {
 			listeners.remove(list);
 		}
 	}
-
+	
 }

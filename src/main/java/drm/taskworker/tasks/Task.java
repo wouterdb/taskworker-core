@@ -45,7 +45,7 @@ import drm.taskworker.Entities;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Task extends AbstractTask {
-	private Map<String, Object> params = new HashMap<String, Object>();
+	private Map<String, Object> params = new HashMap<>();
 	private transient TimerContext timer;
 
 	/**
@@ -116,9 +116,6 @@ public class Task extends AbstractTask {
 	 *            The value of the parameter
 	 */
 	public void addParam(String name, Object value) {
-		if(params == null) {
-			loadParameters();
-		}
 		this.params.put(name, value);
 	}
 
@@ -130,9 +127,6 @@ public class Task extends AbstractTask {
 	 * @return The value
 	 */
 	public Object getParam(String name) {
-		if(params == null) {
-			loadParameters();
-		}
 		return this.params.get(name);
 	}
 
@@ -218,8 +212,8 @@ public class Task extends AbstractTask {
 
 	@Override
 	public String toString() {
-		return String.format("Task [workflow=%s, id=%s, worker=%s, params=%s]",
-				getWorkflowId(), getId(), getWorker(), params);
+		return String.format("Task [workflow=%s, id=%s, worker=%s, nparams=%d]",
+				getWorkflowId(), getId(), getWorker(), params.size());
 	}
 
 	

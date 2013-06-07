@@ -22,8 +22,11 @@ package drm.taskworker.workers;
 import static drm.taskworker.Entities.cs;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.Map.Entry;
 
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
@@ -32,6 +35,7 @@ import com.netflix.astyanax.model.Row;
 
 import drm.taskworker.Entities;
 import drm.taskworker.Worker;
+import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
@@ -76,33 +80,47 @@ public class JoinWorker extends Worker {
 		CqlResult<String, String> results;
 		try {
 			results = cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT id FROM task WHERE workflow_id = ? AND  worker_name = ? ALLOW FILTERING;").asPreparedStatement().withUUIDValue(task.getWorkflowId()).withStringValue(getName()).execute().getResult();
+					.withCql("SELECT id, type FROM task WHERE workflow_id = ? AND worker_name = ?;")
+					.asPreparedStatement()
+					.withUUIDValue(task.getWorkflowId())
+					.withStringValue(getName())
+					.execute().getResult();
 		} catch (ConnectionException e) {
-			
 			throw new RuntimeException(e);
 		}
 		
 		// merge the arguments of the all tasks
-		List<UUID> parents = new ArrayList<>();
+		Map<String, List<Object>> varMap = new HashMap<>();
+		List<AbstractTask> parents = new ArrayList<>();
 		
 		for (Row<String, String> row : results.getRows()) {
 			ColumnList<String> c = row.getColumns();
-			parents.add(c.getUUIDValue("id", null));
-		}
-		
-		if(parents.isEmpty()){
-			return result.setResult(TaskResult.Result.ERROR);
+			if (c.getIntegerValue("type", 0) == 0) {
+				Task t = (Task)AbstractTask.load(task.getWorkflowId(), c.getUUIDValue("id", null));
+				
+				parents.add(t);
+				for (String key : t.getParamNames()) {
+					if (!varMap.containsKey(key)) {
+						varMap.put(key, new ArrayList<Object>());
+					}
+					varMap.get(key).add(t.getParam(key));
+				}
+			}
 		}
 		
 		// create a new task with all joined arguments
-		Task newTask = new Task(task, parents, this.getNextWorker());
+		Task newTask = new Task(parents, this.getNextWorker());
+		
+		for (String varName : varMap.keySet()) {
+			newTask.addParam(varName, varMap.get(varName));
+		}
 		
 		result.addNextTask(newTask);
 		
 		// also create a new endTask
 		result.addNextTask(new EndTask(task, this.getNextWorker()));
 
-		
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}
+	
 }

@@ -25,11 +25,14 @@ import java.util.Arrays;
 public class WeightedRoundRobin implements Serializable {
 
 	private final float[] borders;
+	private final float[] weights;
 	private final String[] names;
 
 	public WeightedRoundRobin(String[] names, float[] weights) {
-		if (names.length != weights.length)
+		this.weights = weights;
+		if (names.length != weights.length) {
 			throw new IllegalArgumentException("lengths do not match");
+		}
 		this.names = names;
 		this.borders = new float[names.length];
 		float sum = 0;
@@ -42,7 +45,7 @@ public class WeightedRoundRobin implements Serializable {
 			this.borders[i] = runningsum;
 		}
 	}
-
+	
 	public float[] getBorders() {
 		return borders;
 	}
@@ -50,13 +53,40 @@ public class WeightedRoundRobin implements Serializable {
 	public String[] getNames() {
 		return names;
 	}
+	
+	/**
+	 * Get the weight at index
+	 */
+	public float getWeight(int index) {
+		assert(index < this.weights.length);
+		
+		return this.weights[index];
+	}
+	
+	/**
+	 * Get the name at index
+	 */
+	public String getName(int index) {
+		assert(index < this.names.length);
+		
+		return this.names[index];
+	}
+	
+	/**
+	 * Get the total length of the weights
+	 */
+	public int getLength() {
+		assert(this.weights.length == this.names.length);
+		return this.weights.length;
+	}
 
 	/**
 	 * @return one of the registered names, the probability of any name being returned is proportional to the weight given
 	 */
 	public String getNext(){
-		if(names.length==0)
+		if(names.length==0) {
 			return null;
+		}
 		int index = Arrays.binarySearch(borders, (float)Math.random());
 		if(index<0){
 			return names[-index-1];

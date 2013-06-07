@@ -34,7 +34,7 @@ import drm.taskworker.tasks.WorkflowInstance;
  * @author wouter
  * 
  * 
- *         //fixme: preload list of open worklows after restart
+ *  fixme: preload list of open worklows after restart
  */
 public class FairShare implements IScheduler, WorkFlowStateListener {
 
@@ -56,8 +56,9 @@ public class FairShare implements IScheduler, WorkFlowStateListener {
 
 		for (String w : workers) {
 			old = Service.get().getPriorities(w);
-			if (old != null)
+			if (old != null) {
 				break;
+			}
 		}
 
 		if (old != null) {
@@ -84,8 +85,10 @@ public class FairShare implements IScheduler, WorkFlowStateListener {
 
 		WeightedRoundRobin wrr = new WeightedRoundRobin(
 				workflows.toArray(new String[workflows.size()]), weights);
-		for (String worker : workers)
+		
+		for (String worker : workers) {
 			Service.get().setPriorities(worker, wrr);
+		}
 	}
 
 }

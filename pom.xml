@@ -3,14 +3,12 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
 
 	<groupId>taskworker</groupId>
 	<artifactId>core</artifactId>
 
 	<properties>
-		<appengine.app.version>1</appengine.app.version>
-		<appengine.target.version>1.7.5</appengine.target.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -64,32 +62,26 @@
 			<version>1.11</version>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.capedwarf.blue</groupId>
-			<artifactId>capedwarf-common</artifactId>
-			<version>1.0.0-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.jboss.capedwarf.blue</groupId>
-			<artifactId>capedwarf-tasks</artifactId>
-			<version>1.0.0-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
 			<groupId>com.netflix.astyanax</groupId>
 			<artifactId>astyanax-core</artifactId>
-			<version>1.56.29</version>
+			<version>1.56.37</version>
 		</dependency>
 		<dependency>
 			<groupId>com.netflix.astyanax</groupId>
 			<artifactId>astyanax-cassandra</artifactId>
-			<version>1.56.29</version>
+			<version>1.56.37</version>
 		</dependency>
 		<dependency>
 			<groupId>com.netflix.astyanax</groupId>
 			<artifactId>astyanax-thrift</artifactId>
-			<version>1.56.29</version>
+			<version>1.56.37</version>
 		</dependency>
+		<dependency>
+            <groupId>com.netflix.astyanax</groupId>
+            <artifactId>astyanax-recipes</artifactId>
+            <version>1.56.37</version>
+        </dependency>
+		<!-- 
 		<dependency>
 			<groupId>org.apache.cassandra</groupId>
 			<artifactId>cassandra-all</artifactId>
@@ -99,7 +91,7 @@
 			<groupId>org.apache.cassandra</groupId>
 			<artifactId>cassandra-thrift</artifactId>
 			<version>1.2.2</version>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>com.yammer.metrics</groupId>
 			<artifactId>metrics-core</artifactId>
@@ -142,7 +134,6 @@
 				<configuration>
 					<archiveClasses>true</archiveClasses>
 					<webResources>
-						<!-- in order to interpolate version from pom into appengine-web.xml -->
 						<resource>
 							<directory>${basedir}/src/main/webapp/WEB-INF</directory>
 							<filtering>true</filtering>
@@ -150,12 +141,6 @@
 						</resource>
 					</webResources>
 				</configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>com.google.appengine</groupId>
-				<artifactId>appengine-maven-plugin</artifactId>
-				<version>${appengine.target.version}</version>
 			</plugin>
 
 			<plugin>

@@ -20,9 +20,7 @@
 package drm.taskworker.tasks;
 
 public interface WorkFlowStateListener {
-	
 	public void workflowStarted(WorkflowInstance wf);
 	public void workflowFinished(WorkflowInstance wf);
-
 }
 

@@ -71,16 +71,15 @@ public abstract class AbstractTask implements Serializable {
 	 * @param worker
 	 *            The name of the worker
 	 */
-	public AbstractTask(WorkflowInstance workflow, AbstractTask parentTask,
-			String worker) {
+	public AbstractTask(UUID workflowId, AbstractTask parentTask, String worker) {
 		this();
 
-		this.setWorkflowId(workflow.getWorkflowId());
+		this.setWorkflowId(workflowId);
 
 		// lookup the next worker
 		if (parentTask != null) {
 			this.parentIds.add(parentTask.getId());
-			this.worker = workflow.resolveStep(parentTask.getWorker(), worker);
+			this.worker = worker;
 		} else {
 			this.worker = worker;
 		}
@@ -109,8 +108,7 @@ public abstract class AbstractTask implements Serializable {
 			this.parentIds.add(parent.getId());
 		}
 
-		this.worker = parentTask.getWorkflow().resolveStep(
-				parentTask.getWorker(), worker);
+		this.worker = worker;
 
 		// set the date the task was created
 		this.setCreatedAt(new Date());
@@ -127,8 +125,7 @@ public abstract class AbstractTask implements Serializable {
 		this.setWorkflowId(one.getWorkflowId());
 
 		this.parentIds.addAll(parents);
-
-		this.worker = one.getWorkflow().resolveStep(one.getWorker(), worker);
+		this.worker = worker;
 
 		// set the date the task was created
 		this.setCreatedAt(new Date());

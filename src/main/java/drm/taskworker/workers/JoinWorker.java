@@ -109,7 +109,7 @@ public class JoinWorker extends Worker {
 		}
 		
 		// create a new task with all joined arguments
-		Task newTask = new Task(parents, this.getNextWorker());
+		Task newTask = new Task(parents, this.getNextWorker(task.getWorkflowId()));
 		
 		for (String varName : varMap.keySet()) {
 			newTask.addParam(varName, varMap.get(varName));
@@ -118,7 +118,7 @@ public class JoinWorker extends Worker {
 		result.addNextTask(newTask);
 		
 		// also create a new endTask
-		result.addNextTask(new EndTask(task, this.getNextWorker()));
+		result.addNextTask(new EndTask(task, this.getNextWorker(task.getWorkflowId())));
 
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}

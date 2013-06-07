@@ -57,7 +57,7 @@ public class Task extends AbstractTask {
 	 *            The name of the worker
 	 */
 	public Task(AbstractTask parent, String worker) {
-		super(parent.getWorkflow(), parent, worker);
+		super(parent.getWorkflowId(), parent, worker);
 	}
 
 	/**
@@ -87,25 +87,25 @@ public class Task extends AbstractTask {
 	 * @param worker
 	 */
 	public Task(WorkflowInstance workflow, String worker) {
-		this(workflow, null, worker);
+		super(workflow.getWorkflowId(), null, worker);
 	}
 
-	/**
-	 * Create a task for a worker
-	 * 
-	 * @param parent
-	 *            The parent of this task
-	 * @param worker
-	 *            The name of the worker
-	 */
-	protected Task(WorkflowInstance workflow, AbstractTask parent, String worker) {
-		super(workflow, parent, worker);
-	}
-
-
-	public Task(AbstractTask one, List<UUID> parents, String worker) {
-		super(one,parents,worker);
-	}
+//	/**
+//	 * Create a task for a worker
+//	 * 
+//	 * @param parent
+//	 *            The parent of this task
+//	 * @param worker
+//	 *            The name of the worker
+//	 */
+//	protected Task(WorkflowInstance workflow, AbstractTask parent, String worker) {
+//		super(workflow, parent, worker);
+//	}
+//
+//
+//	public Task(AbstractTask one, List<UUID> parents, String worker) {
+//		super(one,parents,worker);
+//	}
 
 	/**
 	 * Add a parameter to the task

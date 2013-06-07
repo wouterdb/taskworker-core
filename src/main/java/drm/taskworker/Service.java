@@ -37,6 +37,7 @@ import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.model.Rows;
 
+import drm.taskworker.config.WorkflowConfig;
 import drm.taskworker.queue.Queue;
 import drm.taskworker.queue.TaskHandle;
 import drm.taskworker.schedule.WeightedRoundRobin;
@@ -60,6 +61,9 @@ public class Service {
 	private static final long INTERVAL = 60;
 	private Map<String, WeightedRoundRobin> priorities = new HashMap<>();
 	private Map<String, Long> timeout = new HashMap<>();
+	
+	private Map<UUID,String> endsteps = new HashMap<>();
+	private Map<UUID,WorkflowConfig> wfConfig = new HashMap<>();
 
 	/**
 	 * Get an instance of the service
@@ -348,4 +352,36 @@ public class Service {
 		}
 	}
 	
+	/**
+	 * This method checks if the given step in a workflow is the last one
+	 */
+	public synchronized boolean isWorkflowEnd(UUID workflowId, String endStep) {
+		if (this.endsteps.containsKey(workflowId)) {
+			return this.endsteps.get(workflowId).equals(endStep);
+		}
+		
+		WorkflowInstance wf = WorkflowInstance.load(workflowId);
+		String e = wf.getWorkflowConfig().getWorkflowEnd();
+		this.endsteps.put(workflowId, e);
+		
+		return e.equals(endStep);
+	}
+	
+	/**
+	 * Return the next step in the workflow based on the workflow id and the 
+	 * current step 
+	 */
+	public String getNextWorker(UUID workflowId, String currentStep, String nextSymbol) {
+		if (!this.wfConfig.containsKey(workflowId)) {
+			synchronized (this.wfConfig) {
+				WorkflowInstance wf = WorkflowInstance.load(workflowId);
+				assert(wf != null);
+				this.wfConfig.put(workflowId, wf.getWorkflowConfig());
+			}
+		}
+		
+		String next = this.wfConfig.get(workflowId).getNextStep(currentStep, nextSymbol);
+		
+		return next;
+	}
 }

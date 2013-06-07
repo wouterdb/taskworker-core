@@ -68,10 +68,10 @@ public abstract class Worker implements Runnable {
 	}
 
 	/**
-	 * Get the name of the next worker
+	 * Get the name of the next worker if the workflow id is known
 	 */
-	public String getNextWorker() {
-		return this.nextWorker;
+	public String getNextWorker(UUID workflowId) {
+		return Service.get().getNextWorker(workflowId, this.getName(), this.nextWorker);
 	}
 
 	/**
@@ -91,7 +91,7 @@ public abstract class Worker implements Runnable {
 	 */
 	public TaskResult work(EndTask task) {
 		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(task, this.getNextWorker()));
+		result.addNextTask(new EndTask(task, this.getNextWorker(task.getWorkflowId())));
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}
 
@@ -151,7 +151,7 @@ public abstract class Worker implements Runnable {
 					// process the result
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						trace("DONE", task);
-						if (this.getName().equals(task.getWorkflow().getWorkflowConfig().getWorkflowEnd())) {
+						if (svc.isWorkflowEnd(task.getWorkflowId(), this.getName())) {
 							// this is the end of the workflow
 							// if end-of-batch, signal end-of-job
 							if (task.getTaskType() == 1) {

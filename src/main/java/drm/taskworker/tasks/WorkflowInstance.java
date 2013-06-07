@@ -116,7 +116,7 @@ public class WorkflowInstance implements Serializable {
 	 *            The next symbol that needs to be resolved.
 	 * @return The actual next step.
 	 */
-	public String resolveStep(String stepName, String nextSymbol) {
+	private String resolveStep(String stepName, String nextSymbol) {
 		return this.getWorkflowConfig().getNextStep(stepName, nextSymbol);
 	}
 

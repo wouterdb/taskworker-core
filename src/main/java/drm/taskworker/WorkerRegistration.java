@@ -19,12 +19,12 @@
 
 package drm.taskworker;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
 
 import drm.taskworker.config.Config;
 
@@ -33,11 +33,18 @@ import drm.taskworker.config.Config;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkerRegistration implements ServletContextListener {
+public class WorkerRegistration {
 	private List<Worker> background_threads = null;
+	private Config config = null;
 
-	public WorkerRegistration() {
+	public WorkerRegistration(File file) {
 		background_threads = new ArrayList<Worker>();
+		try {
+			InputStream input = new FileInputStream(file);
+			config = Config.loadConfig(input);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void addWorker(Worker worker) {
@@ -47,17 +54,12 @@ public class WorkerRegistration implements ServletContextListener {
 		thread.start();
 	}
 
-	public void contextInitialized(ServletContextEvent event) {
+	public void start() {
 		// first ensure that the keyspace exists
 		Entities.cs();
 		
-		// now start the workflow engine
-		InputStream input = event.getServletContext().getResourceAsStream("/WEB-INF/workers.yaml");
-		Config config = Config.loadConfig(input);
-
 		if (config.getScheduler() != null) {
 			//scheduler means master server
-			
 			config.getScheduler().create();
 
 			// start a thread to manage the queue service
@@ -89,7 +91,7 @@ public class WorkerRegistration implements ServletContextListener {
 	/**
 	 * Stop all worker threads when the servlet is destroyed.
 	 */
-	public void contextDestroyed(ServletContextEvent event) {
+	public void stop() {
 		for (Worker thread : this.background_threads) {
 			thread.stopWorking();
 		}

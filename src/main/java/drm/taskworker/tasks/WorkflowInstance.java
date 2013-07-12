@@ -107,20 +107,6 @@ public class WorkflowInstance implements Serializable {
 	}
 
 	/**
-	 * Resolve a symbolic next step for the given current step. If the next
-	 * symbol is not defined, the next symbol parameter itself will be returned.
-	 * 
-	 * @param stepName
-	 *            The step to lookup the next step for
-	 * @param nextSymbol
-	 *            The next symbol that needs to be resolved.
-	 * @return The actual next step.
-	 */
-	private String resolveStep(String stepName, String nextSymbol) {
-		return this.getWorkflowConfig().getNextStep(stepName, nextSymbol);
-	}
-
-	/**
 	 * Get a new task in this workflow
 	 * 
 	 * @param worker
@@ -192,6 +178,7 @@ public class WorkflowInstance implements Serializable {
 	 * Load a workflow from the database
 	 */
 	public static WorkflowInstance load(UUID id) {
+		logger.info("Loaded " + id);
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)

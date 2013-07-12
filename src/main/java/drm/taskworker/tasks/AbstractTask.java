@@ -21,9 +21,6 @@ package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.LinkedList;

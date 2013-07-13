@@ -47,6 +47,15 @@ public class App {
 		
 		WorkerRegistration wr = new WorkerRegistration(file);
 		wr.start();
+
+		// wait forever
+		while(true) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 }

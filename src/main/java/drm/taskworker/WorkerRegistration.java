@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import drm.taskworker.config.Config;
 
@@ -36,6 +37,8 @@ import drm.taskworker.config.Config;
 public class WorkerRegistration {
 	private List<Worker> background_threads = null;
 	private Config config = null;
+	protected static final Logger logger = Logger.getLogger(Worker.class
+			.getCanonicalName());
 
 	public WorkerRegistration(File file) {
 		background_threads = new ArrayList<Worker>();
@@ -59,6 +62,7 @@ public class WorkerRegistration {
 		Entities.cs();
 		
 		if (config.getScheduler() != null) {
+			logger.info("Starting scheduler");
 			//scheduler means master server
 			config.getScheduler().create();
 
@@ -82,6 +86,7 @@ public class WorkerRegistration {
 		}
 
 		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
+			logger.info("Starting " + worker.getWorkerName() + " thread");
 			Worker w = worker.getWorkerInstance();
 			this.addWorker(w);
 		}

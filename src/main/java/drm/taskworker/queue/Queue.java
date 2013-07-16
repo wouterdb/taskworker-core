@@ -150,6 +150,38 @@ public class Queue {
 
 		return handles;
 	}
+	
+	private boolean handleExpiredLease(TaskHandle task) throws ConnectionException{
+		// check if the task has a timing entry which also marks a task as
+		// finished. If so, ignore the task and try to do yet an other delete.
+		PreparedCqlQuery<String, String> findTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+				.withCql("SELECT * FROM task_timing WHERE id = ?")
+				.asPreparedStatement();
+		
+		CqlResult<String, String> result = findTask
+				.withUUIDValue(task.getId())
+				.execute().getResult();
+		Rows<String, String> rows = result.getRows();
+		
+		if (rows.size() > 0) {
+			// the task did finish, try to mark it as removed once again
+			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
+					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
+					.asPreparedStatement();
+			
+			markDelete
+					.withStringValue(this.lockName(task.getWorkerName(), task.getWorkflowID()))
+					.withIntegerValue(task.getType())
+					.withUUIDValue(task.getId())
+					.execute().getResult();
+			
+			return false;
+		} else {
+			// this is a real expired
+			logger.warning("Leasing task " + task.getId() + " from which the lease expired.");
+			return true;
+		}
+	}
 
 	/**
 	 * Lease tasks
@@ -196,10 +228,14 @@ public class Queue {
 					handle.setId(c.getUUIDValue("id", null));
 					handle.setWorkerName(taskType);
 					handle.setType(0);
-					handles.add(handle);
 					
 					if (leased_until > 0 && leased_until < now) {
-						logger.warning("Leasing task " + handle.getId() + " from which the lease expired.");
+						// HACK: check if it is a real expire
+						if (this.handleExpiredLease(handle)) {
+							handles.add(handle);
+						}
+					} else {
+						handles.add(handle);
 					}
 				}
 			}
@@ -240,7 +276,10 @@ public class Queue {
 						endTask.setWorkerName(taskType);
 						
 						if (leased_until > 0 && leased_until < now) {
-							logger.warning("Leasing task " + endTask.getId() + " from which the lease expired.");
+							// HACK: check if it is a real expire
+							if (!this.handleExpiredLease(endTask)) {
+								endTask = null;
+							}
 						}
 					} else {
 						// the end task has been leased, so for now we are out
@@ -293,7 +332,7 @@ public class Queue {
 		// TODO: ensure that we still have a lease here
 		logger.info("Removing task " + task.getId() + " " + task.getTaskType());
 		try {
-			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
 					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
 					.asPreparedStatement();
 			
@@ -303,15 +342,16 @@ public class Queue {
 					.withUUIDValue(task.getId())
 					.execute().getResult();
 			
-			PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
-					.withCql("DELETE FROM task_queue WHERE queue_id = ? AND type = ? AND id = ?")
+			if (task.getTaskType() == 1) {
+				// this is an end-task, to we can go ahead and remove the entire "queue" row
+				PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+					.withCql("DELETE FROM task_queue WHERE queue_id = ?")
 					.asPreparedStatement();
 			
-			deleteTask
+				deleteTask
 					.withStringValue(this.lockName(task.getWorker(), task.getWorkflowId()))
-					.withIntegerValue(task.getTaskType())
-					.withUUIDValue(task.getId())
 					.execute().getResult();
+			}
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
 		}

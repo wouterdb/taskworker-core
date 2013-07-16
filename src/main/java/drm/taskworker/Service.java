@@ -170,7 +170,7 @@ public class Service {
 	public AbstractTask getTask(UUID workflowId, String workerType) {
 		List<TaskHandle> tasks;
 		try {
-			tasks = queue.leaseTasks(60, TimeUnit.SECONDS, 1, workerType, workflowId);
+			tasks = queue.leaseTasks(15, TimeUnit.SECONDS, 1, workerType, workflowId);
 
 			// do work!
 			if (!tasks.isEmpty()) {

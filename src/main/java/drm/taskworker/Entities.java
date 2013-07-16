@@ -38,6 +38,7 @@ import com.netflix.astyanax.connectionpool.impl.ConnectionPoolConfigurationImpl;
 import com.netflix.astyanax.connectionpool.impl.CountingConnectionPoolMonitor;
 import com.netflix.astyanax.impl.AstyanaxConfigurationImpl;
 import com.netflix.astyanax.model.ColumnFamily;
+import com.netflix.astyanax.model.ConsistencyLevel;
 import com.netflix.astyanax.serializers.AbstractSerializer;
 import com.netflix.astyanax.serializers.ByteBufferOutputStream;
 import com.netflix.astyanax.serializers.StringSerializer;
@@ -66,7 +67,7 @@ public class Entities {
 		// Using simple strategy
 		keyspace.createKeyspace((ImmutableMap.<String, Object>builder()
 				.put("strategy_options", ImmutableMap.<String, Object>builder()
-						.put("datacenter1", "3")
+						.put("datacenter1", "1")
 			            .build())
 			        .put("strategy_class",     "NetworkTopologyStrategy")
 			        .build())
@@ -107,7 +108,8 @@ public class Entities {
 		} catch (ConnectionException e) {
 			try {
 				createKeyspace(ks);
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
+						.withCql(
 						"CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
 						.execute();
 
@@ -117,46 +119,46 @@ public class Entities {
 				 * 			1 - end task
 				 * 			100 - deleted
 				 */
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (workflow_id, id))")
 						.execute();
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE INDEX task_worker ON task(worker_name)")
 						.execute();
 				
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE task_timing (id uuid, started_at timestamp, finished_at timestamp, PRIMARY KEY (id))")
 						.execute();
 				
-				ks.prepareQuery(CF_STANDARD1).withCql(
-						"CREATE TABLE task_queue (id uuid, workflow_id uuid, worker_name text, leased_until timestamp, type int, removed boolean, PRIMARY KEY(workflow_id, worker_name, type, id))")
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
+						"CREATE TABLE task_queue (id uuid, queue_id text, leased_until timestamp, type int, removed boolean, PRIMARY KEY(queue_id, type, id))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE INDEX task_parent_id ON task_parent (parent_id)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE INDEX job_started ON job (started)")
 						.execute();
 
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE INDEX job_finished ON job (finished)")
 						.execute();
 				
-				ks.prepareQuery(CF_STANDARD1).withCql(
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE TABLE priorities (workflow_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, workflow_id))")
 						.execute();
 				

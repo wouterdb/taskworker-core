@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
+import com.netflix.astyanax.model.ConsistencyLevel;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.model.Rows;
@@ -69,8 +70,12 @@ public class Queue {
 		return lock; 
 	}
 	
+	private String lockName(String workerName, UUID workflowID) {
+		return workerName + "-" + workflowID.toString();
+	}
+	
 	private boolean lock(String workerName, UUID workflowID) {
-		String lockName = workerName + workflowID.toString();
+		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
 		try {
 			lock.acquire();
@@ -83,7 +88,7 @@ public class Queue {
 	}
 	
 	private boolean release(String workerName, UUID workflowID) {
-		String lockName = workerName + workflowID.toString();
+		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
 		try {
 			lock.release();
@@ -159,35 +164,44 @@ public class Queue {
 			return handles;
 		}
 		
+		if (limit != 1) {
+			throw new IllegalArgumentException("Limit more than one not supported!");
+		}
+		
 		long leaseSeconds = unit.toMillis(lease);
 		long now = System.currentTimeMillis();
 		
 		// try to dequeue a task (type = 0 and lease = false)
-		PreparedCqlQuery<String, String> findTasks = cs.prepareQuery(Entities.CF_STANDARD1)
-				.withCql("SELECT * FROM task_queue WHERE workflow_id = ? AND worker_name = ?")
+		PreparedCqlQuery<String, String> findTasks = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+				.withCql("SELECT * FROM task_queue WHERE queue_id = ?")
 				.asPreparedStatement();
 		
 		CqlResult<String, String> result = findTasks
-				.withUUIDValue(workflowId)
-				.withStringValue(taskType)
+				.withStringValue(this.lockName(taskType, workflowId))
 				.execute().getResult();
 		Rows<String, String> rows = result.getRows();
 		
 		for (Row<String, String> row : rows) {	
 			ColumnList<String> c = row.getColumns();
-			
+
 			// add all work tasks that do not have a lease on them
-			if (c.getBooleanValue("removed", false)) {
-				// ignore
-				
-			} else if (c.getColumnByName("leased_until").getLongValue() < now && 
-					c.getColumnByName("type").getIntegerValue() == 0) {
-				TaskHandle handle = new TaskHandle();
-				handle.setWorkflowID(workflowId);
-				handle.setId(c.getUUIDValue("id", null));
-				handle.setWorkerName(taskType);
-				handle.setType(0);
-				handles.add(handle);
+			if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
+				// ignore, strange cassandra crap going on
+			} else {
+				long leased_until = c.getColumnByName("leased_until").getLongValue();
+
+				if (leased_until < now && c.getColumnByName("type").getIntegerValue() == 0) {
+					TaskHandle handle = new TaskHandle();
+					handle.setWorkflowID(workflowId);
+					handle.setId(c.getUUIDValue("id", null));
+					handle.setWorkerName(taskType);
+					handle.setType(0);
+					handles.add(handle);
+					
+					if (leased_until > 0 && leased_until < now) {
+						logger.warning("Leasing task " + handle.getId() + " from which the lease expired.");
+					}
+				}
 			}
 			
 			// stop searching when we reach the limit
@@ -204,18 +218,30 @@ public class Queue {
 			int n = 0;
 			for (Row<String, String> row : result.getRows()) {
 				ColumnList<String> c = row.getColumns();
+
+				if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
+					// ignore, strange cassandra crap going on
+					continue;
+				}
+				
 				int type = c.getColumnByName("type").getIntegerValue();
+				long leased_until = c.getColumnByName("leased_until").getLongValue();
+				// count the number of leased normal tasks or create endtasks
 				if (type == 0) {
-					if (c.getColumnByName("leased_until").getLongValue() > now) {
+					if (leased_until > now) {
 						n++;
 					}
 				} else if (type == 1)  {
-					if (c.getColumnByName("leased_until").getLongValue() < now) {
+					if (leased_until < now) {
 						endTask = new TaskHandle();
 						endTask.setWorkflowID(workflowId);
 						endTask.setId(c.getUUIDValue("id", null));
 						endTask.setType(1);
 						endTask.setWorkerName(taskType);
+						
+						if (leased_until > 0 && leased_until < now) {
+							logger.warning("Leasing task " + endTask.getId() + " from which the lease expired.");
+						}
 					} else {
 						// the end task has been leased, so for now we are out
 						// of work
@@ -231,18 +257,30 @@ public class Queue {
 		
 		// build a batch query that "leases" the tasks
 		if (handles.size() > 0) {
-			String query = "BEGIN BATCH\n";
-			for (TaskHandle handle : handles) {
-				query += "  UPDATE task_queue SET leased_until = " + (now + leaseSeconds) + " WHERE workflow_id = " + 
-						handle.getWorkflowID() + " AND worker_name = '" + 
-						handle.getWorkerName() + "' AND type = " + handle.getType() + 
-						" AND id = " + handle.getId() + ";\n";
-				
-				logger.info("Leasing task " + handle.getId() + " " + handle.getType());
-			}
-			query += "APPLY BATCH;\n";
+//			String query = "BEGIN BATCH\n";
+//			for (TaskHandle handle : handles) {
+//				query += "  UPDATE task_queue SET leased_until = " + (now + leaseSeconds) + ", removed = false WHERE queue_id = '" + 
+//						this.lockName(handle.getWorkerName(), handle.getWorkflowID()) 
+//						+ "' AND type = " + handle.getType() + " AND id = " + handle.getId() + ";\n";
+//				
+//				logger.info("Leasing task " + handle.getId() + " " + handle.getType());
+//			}
+//			query += "APPLY BATCH;\n";
+//			
+//			cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM).withCql(query).execute();
 			
-			cs.prepareQuery(Entities.CF_STANDARD1).withCql(query).execute();
+			for (TaskHandle handle : handles) {
+				PreparedCqlQuery<String, String> leaseTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+						.withCql("UPDATE task_queue SET leased_until = ?, removed = false WHERE queue_id = ? AND type = ? AND id = ?")
+						.asPreparedStatement();
+				
+				result = leaseTask
+						.withLongValue(now + leaseSeconds)
+						.withStringValue(this.lockName(handle.getWorkerName(), handle.getWorkflowID()))
+						.withIntegerValue(handle.getType())
+						.withUUIDValue(handle.getId())
+						.execute().getResult();
+			}
 		}
 		
 		return handles;
@@ -255,20 +293,25 @@ public class Queue {
 		// TODO: ensure that we still have a lease here
 		logger.info("Removing task " + task.getId() + " " + task.getTaskType());
 		try {
-			String update_ql = "UPDATE task_queue SET removed = true WHERE workflow_id = " + 
-					task.getWorkflowId() + " AND worker_name = '" + 
-					task.getWorker() + "' AND type = " +
-					task.getTaskType() + " AND id = " + task.getId() + ";\n";
+			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
+					.asPreparedStatement();
 			
-			String delete_ql = "DELETE FROM task_queue WHERE workflow_id = " + 
-					task.getWorkflowId() + " AND worker_name = '" + 
-					task.getWorker() + "' AND type = " +
-					task.getTaskType() + " AND id = " + task.getId() + ";\n";
+			markDelete
+					.withStringValue(this.lockName(task.getWorker(), task.getWorkflowId()))
+					.withIntegerValue(task.getTaskType())
+					.withUUIDValue(task.getId())
+					.execute().getResult();
 			
-			String query = "BEGIN BATCH\n" + update_ql + delete_ql + "APPLY BATCH;\n";
+			PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+					.withCql("DELETE FROM task_queue WHERE queue_id = ? AND type = ? AND id = ?")
+					.asPreparedStatement();
 			
-			cs.prepareQuery(Entities.CF_STANDARD1).withCql(query).execute();
-			
+			deleteTask
+					.withStringValue(this.lockName(task.getWorker(), task.getWorkflowId()))
+					.withIntegerValue(task.getTaskType())
+					.withUUIDValue(task.getId())
+					.execute().getResult();
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
 		}
@@ -280,13 +323,12 @@ public class Queue {
 	public void addTask(AbstractTask task) {
 		logger.info("Inserting task " + task.getId() + " " + task.getTaskType());
 		try {
-			PreparedCqlQuery<String, String> findTasks = cs.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("INSERT INTO task_queue (workflow_id, worker_name, type, id, leased_until, removed) VALUES (?, ?, ?, ?, 0, false)")
+			PreparedCqlQuery<String, String> addTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+					.withCql("INSERT INTO task_queue (queue_id, type, id, leased_until, removed) VALUES (?, ?, ?, 0, false)")
 					.asPreparedStatement();
 			
-			findTasks
-					.withUUIDValue(task.getWorkflowId())
-					.withStringValue(task.getWorker())
+			addTask
+					.withStringValue(this.lockName(task.getWorker(),  task.getWorkflowId()))
 					.withIntegerValue(task.getTaskType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();

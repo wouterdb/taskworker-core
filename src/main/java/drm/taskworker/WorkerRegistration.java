@@ -87,8 +87,10 @@ public class WorkerRegistration {
 
 		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
 			logger.info("Starting " + worker.getWorkerName() + " thread");
-			Worker w = worker.getWorkerInstance();
-			this.addWorker(w);
+			for (int i = 0; i < worker.getThreads(); i++) {
+				Worker w = worker.getWorkerInstance();
+				this.addWorker(w);
+			}
 		}
 
 	}

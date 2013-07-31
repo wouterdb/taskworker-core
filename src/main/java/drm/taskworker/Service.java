@@ -56,7 +56,6 @@ import drm.taskworker.tasks.WorkflowInstance;
 public class Service {
 	private static Logger logger = Logger.getLogger(Service.class.getCanonicalName());
 	private static Service serviceInstance = new Service();
-	private static final String SCHEDULE = "drm.taskworker.service.scheduler.";
 	
 	private static final long INTERVAL = 60;
 	private Map<String, WeightedRoundRobin> priorities = new HashMap<>();
@@ -383,5 +382,14 @@ public class Service {
 		String next = this.wfConfig.get(workflowId).getNextStep(currentStep, nextSymbol);
 		
 		return next;
+	}
+
+	/**
+	 * Mark the job as failed and stop accepting new tasks for it
+	 * 
+	 * @param jobId
+	 */
+	public void killJob(UUID jobId) {
+		
 	}
 }

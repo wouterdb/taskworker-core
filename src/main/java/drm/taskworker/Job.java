@@ -21,7 +21,6 @@ package drm.taskworker;
 
 import static drm.taskworker.Entities.cs;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -45,19 +44,20 @@ import drm.taskworker.tasks.WorkflowInstance;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class Job implements Serializable {
+public class Job {
 	private static Logger logger = Logger.getLogger(Job.class.getCanonicalName());
 	
 	private transient WorkflowInstance workflow;
 	private transient Task startTask;
-	private UUID workflowId;
+	private UUID jobId;
 	private UUID startTaskId;
 	
 	private long startAfter = 0;
 	private long finishBefore = 0;
 	private boolean isFinished = false;
 	private boolean isStarted = false;
-	
+	private boolean isFailed = false;
+
 	/**
 	 * Create a new job that is started immediately
 	 * 
@@ -80,7 +80,7 @@ public class Job implements Serializable {
 			Date finishAt) {
 		super();
 		this.workflow = workflow;
-		this.workflowId = workflow.getWorkflowId();
+		this.jobId = workflow.getWorkflowId();
 		this.startTask = startTask;
 		this.startTaskId = startTask.getId();
 		
@@ -111,7 +111,7 @@ public class Job implements Serializable {
 	 */
 	public WorkflowInstance getWorkflow() {
 		if (this.workflow == null) {
-			this.workflow = WorkflowInstance.load(this.workflowId);
+			this.workflow = WorkflowInstance.load(this.jobId);
 		}
 		return workflow;
 	}
@@ -123,7 +123,7 @@ public class Job implements Serializable {
 	 */
 	public Task getStartTask() {
 		if (this.startTask == null) {
-			this.startTask = (Task)AbstractTask.load(this.workflowId, this.startTaskId);
+			this.startTask = (Task)AbstractTask.load(this.jobId, this.startTaskId);
 		}
 		return startTask;
 	}
@@ -215,14 +215,22 @@ public class Job implements Serializable {
 		return this.getWorkflow().getWorkflowId().toString();
 	}
 	
+	public boolean isFailed() {
+		return isFailed;
+	}
+
+	public void setFailed() {
+		this.isFailed = true;
+	}
+	
 	/**
 	 * Create a job in the database
 	 */
 	public void create() {
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("INSERT INTO job (workflow_id, start_task_id, start_after, finish_before, started, finished) " + 
-								" VALUES (?, ?, ?, ?, false, false);")
+				.withCql("INSERT INTO job (workflow_id, start_task_id, start_after, finish_before, started, finished, failed) " + 
+								" VALUES (?, ?, ?, ?, false, false, false);")
 				.asPreparedStatement()
 				.withUUIDValue(this.getWorkflow().getWorkflowId())
 				.withUUIDValue(this.getStartTask().getId())
@@ -299,7 +307,7 @@ public class Job implements Serializable {
 		ColumnList<String> columns = row.getColumns();
 		
 		Job job = new Job();
-		job.workflowId = columns.getUUIDValue("workflow_id", null);
+		job.jobId = columns.getUUIDValue("workflow_id", null);
 		job.startTaskId = columns.getUUIDValue("start_task_id", null);
 		job.startAfter = columns.getLongValue("start_after", 0L);
 		job.finishBefore = columns.getLongValue("finish_before", 0L);

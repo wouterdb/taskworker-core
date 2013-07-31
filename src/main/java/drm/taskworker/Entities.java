@@ -147,7 +147,7 @@ public class Entities {
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
+						"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(

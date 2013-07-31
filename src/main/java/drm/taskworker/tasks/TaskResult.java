@@ -33,6 +33,7 @@ public class TaskResult {
 	private Result result = null;
 	private List<AbstractTask> tasks = null;
 	private Exception exception = null;
+	private boolean fail = false;
 
 	/**
 	 * Initialize a new taskresult
@@ -99,5 +100,20 @@ public class TaskResult {
 	 */
 	public void setException(Exception exception) {
 		this.exception = exception;
+	}
+	
+	/**
+	 * Mark the task as failed
+	 */
+	public void fail() {
+		this.fail = true;
+	}
+	
+	/**
+	 * Is the failure fatal?
+	 * @return
+	 */
+	public boolean isFatal() {
+		return this.fail;
 	}
 }

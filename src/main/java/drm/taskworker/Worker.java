@@ -139,13 +139,16 @@ public abstract class Worker implements Runnable {
 						
 						result.setException(e);
 						result.setResult(Result.EXCEPTION);
+						result.fail();
 					}
 					task.setFinishedAt();
 					task.saveTiming();
 
 					if (result == null) {
+						result = new TaskResult();
+						result.setResult(Result.ERROR);
+						result.fail();
 						logger.warning("Worker returns null. Ouch ...");
-						continue;
 					}
 
 					// process the result
@@ -170,8 +173,14 @@ public abstract class Worker implements Runnable {
 						
 					} else {
 						trace("FAILED", task);
+						logger.warning(String.format("[%s] failed %s: %s", this.name, task.toString(), result.getResult().toString())); 
 						if (result.getResult() == TaskResult.Result.EXCEPTION) {
 							result.getException().printStackTrace();
+						}
+						
+						if (result.isFatal()) {
+							// if this task is fatal, kill the current workflow
+							svc.killJob(task.getWorkflowId());
 						}
 					}
 					
@@ -189,7 +198,6 @@ public abstract class Worker implements Runnable {
 				Thread.sleep(sleepTime);
 			} catch (Exception e) {
 				logger.log(Level.SEVERE, getName() + " failed", e);
-
 			}
 		}
 	}

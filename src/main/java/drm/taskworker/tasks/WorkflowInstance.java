@@ -21,7 +21,6 @@ package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -49,7 +48,7 @@ import drm.taskworker.monitoring.Statistic;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkflowInstance implements Serializable {
+public class WorkflowInstance {
 	private static Logger logger = Logger.getLogger(Worker.class.getCanonicalName());
 	private drm.taskworker.config.WorkflowConfig workflowConfig = null;
 

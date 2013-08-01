@@ -19,10 +19,8 @@
  */
 package drm.taskworker.monitoring;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,8 +28,6 @@ import java.util.List;
 import org.junit.Test;
 
 import com.google.common.primitives.Ints;
-
-import drm.taskworker.monitoring.Statistic;
 
 public class StatisticTest {
 

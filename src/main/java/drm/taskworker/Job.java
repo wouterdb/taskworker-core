@@ -138,8 +138,8 @@ public class Job {
 	 * 
 	 * @param startAfter
 	 */
-	public void setStartAfter(long startAfter) {
-		this.startAfter = startAfter;
+	public void setStartAfter(Date startAfter) {
+		this.startAfter = startAfter.getTime();
 	}
 
 	/**
@@ -157,7 +157,8 @@ public class Job {
 	 * 
 	 * @param time
 	 */
-	public void setFinishBefore(long time) {
+	public void setFinishBefore(Date finishBefore) {
+		long time = finishBefore.getTime();
 		if (time > 0 && time < this.startAfter) {
 			throw new IllegalArgumentException("The finish time should be set after the start time of the job.");
 		}
@@ -183,7 +184,7 @@ public class Job {
 	}
 	
 	/**
-	 * The name of a job is the ID of the workflowinstance.
+	 * Returns the name of the job. The name is a random UUID.
 	 * @return
 	 */
 	public String getName() {
@@ -191,8 +192,8 @@ public class Job {
 	}
 	
 	/**
-	 * Is this job finished. A job is finished when the workflow instance has
-	 * been marked as finished.
+	 * Is this job finished. A job is finished when last task is finished and
+	 * the finish time has been set.
 	 */
 	public boolean isFinished() {
 		return this.isFinished;
@@ -236,20 +237,7 @@ public class Job {
 	public void setFailed() {
 		this.isFailed = true;
 	}
-/*	CREATE TABLE job (job_id uuid, 
-	start_task_id uuid, 
-	workflow_name text, 
-  	start_after timestamp, 
-  	finish_before timestamp, 
-  	finished boolean, 
-	started boolean, 
-	failed boolean, 
-	started_at timestamp, 
-	finished_at timestamp, 
-	stats blob, 
-	PRIMARY KEY(job_id, start_after, finish_before))")
-
- */
+	
 	/**
 	 * Create a job in the database
 	 */
@@ -502,7 +490,7 @@ public class Job {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT * FROM workflow;").asPreparedStatement()
+					.withCql("SELECT * FROM job;").asPreparedStatement()
 					.execute();
 
 			List<Job> workflows = new ArrayList<>();

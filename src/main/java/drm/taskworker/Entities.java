@@ -23,9 +23,11 @@ import java.io.ByteArrayInputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang3.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import com.google.common.collect.ImmutableMap;
@@ -109,10 +111,9 @@ public class Entities {
 		} catch (ConnectionException e) {
 			try {
 				createKeyspace(ks);
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
-						.withCql(
-						"CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))")
-						.execute();
+				
+				List<String> queries = new ArrayList<>();
+				queries.add("CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))");
 
 				/*
 				 * type:
@@ -120,44 +121,21 @@ public class Entities {
 				 * 			1 - end task
 				 * 			100 - deleted
 				 */
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task (id uuid, job_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (job_id, id))")
-						.execute();
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE INDEX task_worker ON task(worker_name)")
-						.execute();
+				queries.add("CREATE TABLE task (id uuid, job_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (job_id, id))");
+				queries.add("CREATE INDEX task_worker ON task(worker_name)");
+				queries.add("CREATE TABLE task_timing (id uuid, started_at timestamp, finished_at timestamp, PRIMARY KEY (id))");
+				queries.add("CREATE TABLE task_queue (id uuid, queue_id text, leased_until timestamp, type int, removed boolean, PRIMARY KEY(queue_id, type, id))");
+				queries.add("CREATE TABLE task_parent (id uuid, job_id uuid, parent_id uuid, PRIMARY KEY(job_id, id))");
+				queries.add("CREATE INDEX task_parent_id ON task_parent (parent_id)");
+				queries.add("CREATE TABLE job (job_id uuid, start_task_id uuid, workflow_name text, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, started_at timestamp, finished_at timestamp, stats blob, PRIMARY KEY(job_id, start_after, finish_before))");
+				queries.add("CREATE INDEX job_started ON job (started)");
+				queries.add("CREATE INDEX job_finished ON job (finished)");
+				queries.add("CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))");
 				
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task_timing (id uuid, started_at timestamp, finished_at timestamp, PRIMARY KEY (id))")
-						.execute();
+				String query = "BEGIN BATCH\n" + StringUtils.join(queries, ";\n") + "APPLY BATCH;";
 				
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task_queue (id uuid, queue_id text, leased_until timestamp, type int, removed boolean, PRIMARY KEY(queue_id, type, id))")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task_parent (id uuid, job_id uuid, parent_id uuid, PRIMARY KEY(job_id, id))")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE INDEX task_parent_id ON task_parent (parent_id)")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE job (job_id uuid, start_task_id uuid, workflow_name text, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, started_at timestamp, finished_at timestamp, stats blob, PRIMARY KEY(job_id, start_after, finish_before))")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE INDEX job_started ON job (started)")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE INDEX job_finished ON job (finished)")
-						.execute();
-				
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))")
-						.execute();
+				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
+					.withCql(query).execute();
 				
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");

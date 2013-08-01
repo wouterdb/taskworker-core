@@ -19,14 +19,13 @@
  */
 package drm.taskworker.config;
 
-import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import drm.taskworker.schedule.IScheduler;
 
-
-public class SchedulerConfig implements Serializable {
+@SuppressWarnings("rawtypes")
+public class SchedulerConfig {
 
 	private String schedulerClass = null;
 	private Map arguments = null;
@@ -67,6 +66,7 @@ public class SchedulerConfig implements Serializable {
 	
 	public void create(){
 		try {
+			@SuppressWarnings("unchecked")
 			Class<drm.taskworker.schedule.IScheduler> workerCls = (Class<drm.taskworker.schedule.IScheduler>)Class.forName(this.getSchedulerClass());
 			IScheduler sched = workerCls.getConstructor().newInstance();
 			sched.enable(getArguments());

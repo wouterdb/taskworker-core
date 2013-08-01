@@ -35,7 +35,7 @@ public class EndTask extends AbstractTask {
 	 * @param worker The name of the worker
 	 */
 	public EndTask(AbstractTask parent, String worker) {
-		super(parent.getWorkflowId(), parent, worker);
+		super(parent.getJobId(), parent, worker);
 	}
 	
 	/**
@@ -52,6 +52,6 @@ public class EndTask extends AbstractTask {
 	public String toString() {
 		return String.format(
 				"EndTask [workflow=%s, id=%s, worker=%s]",
-				getWorkflowId(), getId(), getWorker());
+				getJobId(), getId(), getWorker());
 	}
 }

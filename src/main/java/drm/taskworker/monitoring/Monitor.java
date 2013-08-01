@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import drm.taskworker.tasks.WorkflowInstance;
+import drm.taskworker.Job;
 
 public class Monitor implements IMonitor {
 
@@ -38,19 +38,19 @@ public class Monitor implements IMonitor {
 
 	@Override
 	public Map<String, Set<Statistic>> getStats() {
-		List<WorkflowInstance> in =WorkflowInstance.getAll();
+		List<Job> in =Job.getAll();
 		
 		return getStats(in);
 	}
 
-	protected Map<String, Set<Statistic>> getStats(List<WorkflowInstance> in) {
+	protected Map<String, Set<Statistic>> getStats(List<Job> in) {
 		Map<String, Set<Statistic>> out = new HashMap<String, Set<Statistic>>();
 
-		for(WorkflowInstance wf: in){
+		for(Job wf: in){
 			if(wf.getStats()==null)
 				wf.calcStats();
 			if(wf.getStats() != null)
-				out.put(wf.getWorkflowId().toString(),new HashSet<>(wf.getStats()));
+				out.put(wf.getJobId().toString(),new HashSet<>(wf.getStats()));
 		}
 		
 		return out;
@@ -58,12 +58,13 @@ public class Monitor implements IMonitor {
 	
 	@Override
 	public Map<String, Set<Statistic>> getStats(int lastN) {
+		logger.fine("Retrieving last " + lastN + " stats");
 		//FIXME: inefficient as cassandra can not 'order by'  
-		List<WorkflowInstance> all = new ArrayList<>(WorkflowInstance.getAll());
-		Collections.sort(all, new Comparator<WorkflowInstance>() {
+		List<Job> all = new ArrayList<>(Job.getAll());
+		Collections.sort(all, new Comparator<Job>() {
 
 			@Override
-			public int compare(WorkflowInstance o1, WorkflowInstance o2) {
+			public int compare(Job o1, Job o2) {
 				return o1.getFinishedAt().compareTo(o2.getFinishedAt());
 			}
 		});
@@ -73,11 +74,11 @@ public class Monitor implements IMonitor {
 		
 		Map<String, Set<Statistic>> out = new HashMap<String, Set<Statistic>>();
 
-		for(WorkflowInstance wf: all){
+		for(Job wf: all){
 			if(wf.getStats()==null)
 				wf.calcStats();
 			if(wf.getStats() != null)
-				out.put(wf.getWorkflowId().toString(),new HashSet<>(wf.getStats()));
+				out.put(wf.getJobId().toString(),new HashSet<>(wf.getStats()));
 		}
 		
 		return out;

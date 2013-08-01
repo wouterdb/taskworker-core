@@ -19,7 +19,6 @@
 
 package drm.taskworker.config;
 
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -31,7 +30,7 @@ import java.util.Map;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkerConfig implements Serializable {
+public class WorkerConfig {
 	private String workerName = null;
 	private String workerClass = null;
 	private int threads = 1;
@@ -98,6 +97,7 @@ public class WorkerConfig implements Serializable {
 	/**
 	 * Create a list of worker
 	 */
+	@SuppressWarnings("unchecked")
 	public static Map<String,WorkerConfig> parseWorkers(@SuppressWarnings("rawtypes") List<Map> workers) {
 		Map<String,WorkerConfig> results = new HashMap<String, WorkerConfig>();
 		for (Map<String,Object> map : workers) {

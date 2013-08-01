@@ -37,6 +37,7 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Entities;
+import drm.taskworker.Job;
 
 /**
  * A task that needs to be executed by a worker
@@ -56,7 +57,7 @@ public class Task extends AbstractTask {
 	 *            The name of the worker
 	 */
 	public Task(AbstractTask parent, String worker) {
-		super(parent.getWorkflowId(), parent, worker);
+		super(parent.getJobId(), parent, worker);
 	}
 
 	/**
@@ -85,8 +86,8 @@ public class Task extends AbstractTask {
 	 * @param workflow
 	 * @param worker
 	 */
-	public Task(WorkflowInstance workflow, String worker) {
-		super(workflow.getWorkflowId(), null, worker);
+	public Task(Job job, String worker) {
+		super(job.getJobId(), null, worker);
 	}
 
 //	/**
@@ -212,7 +213,7 @@ public class Task extends AbstractTask {
 	@Override
 	public String toString() {
 		return String.format("Task [workflow=%s, id=%s, worker=%s, nparams=%d]",
-				getWorkflowId(), getId(), getWorker(), params.size());
+				getJobId(), getId(), getWorker(), params.size());
 	}
 
 	

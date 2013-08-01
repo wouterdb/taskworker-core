@@ -20,7 +20,6 @@
 package drm.taskworker.config;
 
 import java.io.InputStream;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +30,7 @@ import org.yaml.snakeyaml.Yaml;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class Config implements Serializable {
+public class Config {
 	private static Config config = null;
 	private Map<String, WorkerConfig> workers = null;
 	private Map<String, WorkflowConfig> workflows = null;

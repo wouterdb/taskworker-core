@@ -19,10 +19,9 @@
  */
 package drm.taskworker.schedule;
 
-import java.io.Serializable;
 import java.util.Arrays;
 
-public class WeightedRoundRobin implements Serializable {
+public class WeightedRoundRobin {
 
 	private final float[] borders;
 	private final float[] weights;

@@ -337,7 +337,7 @@ public class Queue {
 					.asPreparedStatement();
 			
 			markDelete
-					.withStringValue(this.lockName(task.getWorker(), task.getWorkflowId()))
+					.withStringValue(this.lockName(task.getWorker(), task.getJobId()))
 					.withIntegerValue(task.getTaskType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();
@@ -349,7 +349,7 @@ public class Queue {
 					.asPreparedStatement();
 			
 				deleteTask
-					.withStringValue(this.lockName(task.getWorker(), task.getWorkflowId()))
+					.withStringValue(this.lockName(task.getWorker(), task.getJobId()))
 					.execute().getResult();
 			}
 		} catch (ConnectionException e) {
@@ -368,7 +368,7 @@ public class Queue {
 					.asPreparedStatement();
 			
 			addTask
-					.withStringValue(this.lockName(task.getWorker(),  task.getWorkflowId()))
+					.withStringValue(this.lockName(task.getWorker(),  task.getJobId()))
 					.withIntegerValue(task.getTaskType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();

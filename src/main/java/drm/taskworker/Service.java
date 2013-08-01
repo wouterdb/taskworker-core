@@ -43,9 +43,8 @@ import drm.taskworker.queue.TaskHandle;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
+import drm.taskworker.tasks.JobStateListener;
 import drm.taskworker.tasks.Task;
-import drm.taskworker.tasks.WorkFlowStateListener;
-import drm.taskworker.tasks.WorkflowInstance;
 
 /**
  * This class implements a workflow service. This service should be stateless
@@ -85,8 +84,7 @@ public class Service {
 	 * Add a job to the queue
 	 */
 	public void addJob(Job job) {
-		job.create();
-		job.getWorkflow().save();
+		job.insert();
 		job.getStartTask().save();
 		logger.info("Stored job to start at " + new Date(job.getStartAfter()));
 	}
@@ -98,7 +96,7 @@ public class Service {
 		List<Job> jobs = Job.getJobsThatShouldStart();
 
 		for (Job job : jobs) {
-			if (!job.getWorkflow().isStarted()) {
+			if (!job.isStarted()) {
 				logger.info("Found a job to start " + job.getJobId());
 				this.startWorkflow(job);
 			}
@@ -112,19 +110,12 @@ public class Service {
 	 *            The workflow to start
 	 */
 	public void startWorkflow(Job job) {
-		WorkflowInstance workflow = job.getWorkflow();
 		Task start = job.getStartTask();
-
-//		// save the workflow
-//		workflow.save();
-//
-//		// save the task
-//		start.save();
 
 		// notify others
 		synchronized (listeners) {
-			for (WorkFlowStateListener wfsl : listeners) {
-				wfsl.workflowStarted(workflow);
+			for (JobStateListener wfsl : listeners) {
+				wfsl.jobStarted(job);
 			}
 		}
 
@@ -132,15 +123,12 @@ public class Service {
 		this.queueTask(start);
 
 		// set the start date of the workflow
-		workflow.setStartAt(new Date());
+		job.setStartAt(new Date());
 
 		// send end of workflow as the last task
 		EndTask endTask = new EndTask(start, start.getWorker());
 		endTask.save();
 		this.queueTask(endTask);
-
-		// mark job as started
-		job.markStarted();
 
 		logger.info("Started workflow. Added task for " + start.getWorker());
 	}
@@ -236,23 +224,19 @@ public class Service {
 	 * @param nextTasks
 	 */
 	public void workflowFinished(AbstractTask task, List<AbstractTask> nextTasks) {
-		WorkflowInstance wf = task.getWorkflow();
+		Job job = task.getJob();
 
-		logger.info("Workflow " + wf.getWorkflowId() + " was finished");
+		logger.info("Job " + job.getJobId() + " was finished");
 
 		if (task.getTaskType() == 1) {
-			wf.setFinishedAt(new Date());
+			job.setFinishedAt(new Date());
 		}
 
-		wf.calcStats();
-
-		// TODO: store results
-		Job job = Job.load(wf.getWorkflowId());
-		job.markFinished();
+		job.calcStats();
 
 		synchronized (listeners) {
-			for (WorkFlowStateListener wfsl : listeners) {
-				wfsl.workflowFinished(wf);
+			for (JobStateListener wfsl : listeners) {
+				wfsl.jobFinished(job);
 			}
 		}
 	}
@@ -325,7 +309,7 @@ public class Service {
 		return new WeightedRoundRobin(new String[]{}, new float[]{});
 	}
 
-	private List<WorkFlowStateListener> listeners = new LinkedList<>();
+	private List<JobStateListener> listeners = new LinkedList<>();
 
 	/**
 	 * add a workflow listener
@@ -334,7 +318,7 @@ public class Service {
 	 * 
 	 * @param list
 	 */
-	public void addWorkflowStateListener(WorkFlowStateListener list) {
+	public void addWorkflowStateListener(JobStateListener list) {
 		synchronized (listeners) {
 			listeners.add(list);
 		}
@@ -345,7 +329,7 @@ public class Service {
 	 * 
 	 * @param list
 	 */
-	public void removeWorkflowStateListener(WorkFlowStateListener list) {
+	public void removeWorkflowStateListener(JobStateListener list) {
 		synchronized (listeners) {
 			listeners.remove(list);
 		}
@@ -354,14 +338,14 @@ public class Service {
 	/**
 	 * This method checks if the given step in a workflow is the last one
 	 */
-	public synchronized boolean isWorkflowEnd(UUID workflowId, String endStep) {
-		if (this.endsteps.containsKey(workflowId)) {
-			return this.endsteps.get(workflowId).equals(endStep);
+	public synchronized boolean isJobEnd(UUID jobId, String endStep) {
+		if (this.endsteps.containsKey(jobId)) {
+			return this.endsteps.get(jobId).equals(endStep);
 		}
 		
-		WorkflowInstance wf = WorkflowInstance.load(workflowId);
-		String e = wf.getWorkflowConfig().getWorkflowEnd();
-		this.endsteps.put(workflowId, e);
+		Job job = Job.load(jobId);
+		String e = job.getWorkflowConfig().getWorkflowEnd();
+		this.endsteps.put(jobId, e);
 		
 		return e.equals(endStep);
 	}
@@ -370,16 +354,16 @@ public class Service {
 	 * Return the next step in the workflow based on the workflow id and the 
 	 * current step 
 	 */
-	public String getNextWorker(UUID workflowId, String currentStep, String nextSymbol) {
-		if (!this.wfConfig.containsKey(workflowId)) {
+	public String getNextWorker(UUID jobId, String currentStep, String nextSymbol) {
+		if (!this.wfConfig.containsKey(jobId)) {
 			synchronized (this.wfConfig) {
-				WorkflowInstance wf = WorkflowInstance.load(workflowId);
-				assert(wf != null);
-				this.wfConfig.put(workflowId, wf.getWorkflowConfig());
+				Job job = Job.load(jobId);
+				assert(job != null);
+				this.wfConfig.put(jobId, job.getWorkflowConfig());
 			}
 		}
 		
-		String next = this.wfConfig.get(workflowId).getNextStep(currentStep, nextSymbol);
+		String next = this.wfConfig.get(jobId).getNextStep(currentStep, nextSymbol);
 		
 		return next;
 	}

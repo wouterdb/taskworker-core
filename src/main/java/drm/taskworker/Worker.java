@@ -91,7 +91,7 @@ public abstract class Worker implements Runnable {
 	 */
 	public TaskResult work(EndTask task) {
 		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(task, this.getNextWorker(task.getWorkflowId())));
+		result.addNextTask(new EndTask(task, this.getNextWorker(task.getJobId())));
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}
 
@@ -154,7 +154,7 @@ public abstract class Worker implements Runnable {
 					// process the result
 					if (result.getResult() == TaskResult.Result.SUCCESS) {
 						trace("DONE", task);
-						if (svc.isWorkflowEnd(task.getWorkflowId(), this.getName())) {
+						if (svc.isJobEnd(task.getJobId(), this.getName())) {
 							// this is the end of the workflow
 							// if end-of-batch, signal end-of-job
 							if (task.getTaskType() == 1) {
@@ -180,7 +180,7 @@ public abstract class Worker implements Runnable {
 						
 						if (result.isFatal()) {
 							// if this task is fatal, kill the current workflow
-							svc.killJob(task.getWorkflowId());
+							svc.killJob(task.getJobId());
 						}
 					}
 					
@@ -216,7 +216,7 @@ public abstract class Worker implements Runnable {
 		Service svc = Service.get();
 		WeightedRoundRobin wrr = svc.getPriorities(this.name);
 		int i = 0;
-		UUID workflowId = task.getWorkflowId();
+		UUID workflowId = task.getJobId();
 		String[] names = wrr.getNames();
 		for (; i < names.length; i++) {
 			if (names[i].equals(workflowId.toString()))

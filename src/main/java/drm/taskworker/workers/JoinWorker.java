@@ -71,7 +71,7 @@ public class JoinWorker extends Worker {
 	 * Handle the end of workflow token by sending it to the same next hop.
 	 */
 	public TaskResult work(EndTask task) {
-		logger.info("Joining workflow " + task.getWorkflowId().toString());
+		logger.info("Joining workflow " + task.getJobId().toString());
 		TaskResult result = new TaskResult();
 
 		//Fixme: perhaps write out intermediate table
@@ -80,7 +80,7 @@ public class JoinWorker extends Worker {
 			results = cs().prepareQuery(Entities.CF_STANDARD1)
 					.withCql("SELECT id, type FROM task WHERE workflow_id = ? AND worker_name = ?;")
 					.asPreparedStatement()
-					.withUUIDValue(task.getWorkflowId())
+					.withUUIDValue(task.getJobId())
 					.withStringValue(getName())
 					.execute().getResult();
 		} catch (ConnectionException e) {
@@ -94,7 +94,7 @@ public class JoinWorker extends Worker {
 		for (Row<String, String> row : results.getRows()) {
 			ColumnList<String> c = row.getColumns();
 			if (c.getIntegerValue("type", 0) == 0) {
-				Task t = (Task)AbstractTask.load(task.getWorkflowId(), c.getUUIDValue("id", null));
+				Task t = (Task)AbstractTask.load(task.getJobId(), c.getUUIDValue("id", null));
 				
 				parents.add(t);
 				for (String key : t.getParamNames()) {
@@ -107,7 +107,7 @@ public class JoinWorker extends Worker {
 		}
 		
 		// create a new task with all joined arguments
-		Task newTask = new Task(parents, this.getNextWorker(task.getWorkflowId()));
+		Task newTask = new Task(parents, this.getNextWorker(task.getJobId()));
 		
 		for (String varName : varMap.keySet()) {
 			newTask.addParam(varName, varMap.get(varName));
@@ -116,7 +116,7 @@ public class JoinWorker extends Worker {
 		result.addNextTask(newTask);
 		
 		// also create a new endTask
-		result.addNextTask(new EndTask(task, this.getNextWorker(task.getWorkflowId())));
+		result.addNextTask(new EndTask(task, this.getNextWorker(task.getJobId())));
 
 		return result.setResult(TaskResult.Result.SUCCESS);
 	}

@@ -28,8 +28,6 @@ public class Snapshot {
 	private long timestamp;
 	private List<Statistic> stats = new LinkedList<Statistic>();
 	
-	private Snapshot(){}
-	
 	public Snapshot(Date timestamp) {
 		super();
 		this.timestamp = timestamp.getTime();

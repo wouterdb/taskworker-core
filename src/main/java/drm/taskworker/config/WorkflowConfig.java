@@ -19,7 +19,6 @@
 
 package drm.taskworker.config;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,7 +27,7 @@ import java.util.Map;
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkflowConfig implements Serializable {
+public class WorkflowConfig {
 	private String workflowName = null;
 	private Map<String, Map<String, String>> steps = new HashMap<>();
 	private String workflowStart = null;

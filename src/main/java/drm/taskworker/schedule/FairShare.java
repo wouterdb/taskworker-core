@@ -25,10 +25,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import drm.taskworker.Job;
 import drm.taskworker.Service;
 import drm.taskworker.config.Config;
-import drm.taskworker.tasks.WorkFlowStateListener;
-import drm.taskworker.tasks.WorkflowInstance;
+import drm.taskworker.tasks.JobStateListener;
 
 /**
  * @author wouter
@@ -36,11 +36,13 @@ import drm.taskworker.tasks.WorkflowInstance;
  * 
  *  fixme: preload list of open worklows after restart
  */
-public class FairShare implements IScheduler, WorkFlowStateListener {
+@SuppressWarnings("rawtypes")
+public class FairShare implements IScheduler, JobStateListener {
 
 	private List<String> workers;
 	private List<String> workflows = new LinkedList<>();
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void enable(Map config) {
 		List<String> workers = (List<String>) config.get("workers");
@@ -68,14 +70,14 @@ public class FairShare implements IScheduler, WorkFlowStateListener {
 	}
 
 	@Override
-	public synchronized void workflowStarted(WorkflowInstance wf) {
-		workflows.add(wf.getWorkflowId().toString());
+	public synchronized void jobStarted(Job job) {
+		workflows.add(job.getJobId().toString());
 		rebuild();
 	}
 
 	@Override
-	public synchronized void workflowFinished(WorkflowInstance wf) {
-		workflows.remove(wf.getWorkflowId().toString());
+	public synchronized void jobFinished(Job job) {
+		workflows.remove(job.getJobId().toString());
 		rebuild();
 	}
 

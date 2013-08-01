@@ -21,7 +21,6 @@ package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
-import java.io.Serializable;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -36,13 +35,14 @@ import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.model.Rows;
 
 import drm.taskworker.Entities;
+import drm.taskworker.Job;
 
 /**
  * A baseclass for all tasks.
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public abstract class AbstractTask implements Serializable {
+public abstract class AbstractTask {
 	private UUID taskId = null;
 
 	private String worker = null;
@@ -50,7 +50,7 @@ public abstract class AbstractTask implements Serializable {
 	private Date startedAt = null;
 	private Date finishedAt = null;
 
-	private UUID workflowId = null;
+	private UUID jobId = null;
 
 	// WARNING: this list is only saved to the database and not yet loaded from it!
 	private List<UUID> parentIds = null;
@@ -71,7 +71,7 @@ public abstract class AbstractTask implements Serializable {
 	public AbstractTask(UUID workflowId, AbstractTask parentTask, String worker) {
 		this();
 
-		this.setWorkflowId(workflowId);
+		this.setJobId(workflowId);
 
 		// lookup the next worker
 		if (parentTask != null) {
@@ -100,7 +100,7 @@ public abstract class AbstractTask implements Serializable {
 		}
 
 		AbstractTask parentTask = parents.get(0);
-		this.setWorkflowId(parentTask.getWorkflowId());
+		this.setJobId(parentTask.getJobId());
 		for (AbstractTask parent : parents) {
 			this.parentIds.add(parent.getId());
 		}
@@ -119,7 +119,7 @@ public abstract class AbstractTask implements Serializable {
 					"Each task should have at least one parent.");
 		}
 
-		this.setWorkflowId(one.getWorkflowId());
+		this.setJobId(one.getJobId());
 
 		this.parentIds.addAll(parents);
 		this.worker = worker;
@@ -161,10 +161,9 @@ public abstract class AbstractTask implements Serializable {
 	/**
 	 * Get the workflow this task belongs to.
 	 */
-	public WorkflowInstance getWorkflow() {
-		WorkflowInstance wf = WorkflowInstance.load(this.getWorkflowId());
-		assert (wf != null);
-		return wf;
+	public Job getJob() {
+		Job job = Job.load(getJobId());
+		return job;
 	}
 
 	/**
@@ -223,27 +222,27 @@ public abstract class AbstractTask implements Serializable {
 		/*
 		 * CREATE TABLE task ( id uuid PRIMARY KEY, created_at uuid, finished_at
 		 * uuid, parent_id uuid, started_at uuid, type text, worker_name text,
-		 * workflow_id uuid )
+		 * job_id uuid )
 		 */
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
-							"INSERT INTO task (id, created_at, type, worker_name, workflow_id) "
+							"INSERT INTO task (id, created_at, type, worker_name, job_id) "
 									+ " VALUES (?, ?, ?, ?, ?);")
 					.asPreparedStatement().withUUIDValue(this.getId()) // id
 					.withLongValue(this.createdAt.getTime()) // created_at
 					.withIntegerValue(this.getTaskType()) // type
 					.withStringValue(this.getWorker()) // worker_name
-					.withUUIDValue(this.getWorkflowId()) // workflow_id
+					.withUUIDValue(this.getJobId()) // job_id
 					.execute();
 
 			// now save the list of parents
 			for (UUID parentId : this.parentIds) {
 				cs().prepareQuery(Entities.CF_STANDARD1)
 						.withCql(
-								"INSERT INTO task_parent (id, workflow_id, parent_id) VALUES (?, ?, ?);")
+								"INSERT INTO task_parent (id, job_id, parent_id) VALUES (?, ?, ?);")
 						.asPreparedStatement().withUUIDValue(this.getId()) // id
-						.withUUIDValue(this.workflowId) // workflow_id
+						.withUUIDValue(this.jobId) // job_id
 						.withUUIDValue(parentId) // parent_id
 						.execute();
 			}
@@ -270,7 +269,7 @@ public abstract class AbstractTask implements Serializable {
 			OperationResult<CqlResult<	String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
-							"SELECT * FROM task WHERE workflow_id = ? AND id = ?;")
+							"SELECT * FROM task WHERE job_id = ? AND id = ?;")
 					.asPreparedStatement().withUUIDValue(workflowID)
 					.withUUIDValue(id).execute();
 
@@ -298,7 +297,7 @@ public abstract class AbstractTask implements Serializable {
 
 		task.createdAt = new Date(columns.getLongValue("created_at", 0L));
 
-		task.setWorkflowId(columns.getUUIDValue("workflow_id", null));
+		task.setJobId(columns.getUUIDValue("job_id", null));
 		task.worker = columns.getStringValue("worker_name", null);
 
 		
@@ -359,16 +358,16 @@ public abstract class AbstractTask implements Serializable {
 	/**
 	 * @return the workflowId
 	 */
-	public UUID getWorkflowId() {
-		return workflowId;
+	public UUID getJobId() {
+		return jobId;
 	}
 
 	/**
-	 * @param workflowId
-	 *            the workflowId to set
+	 * @param jobId
+	 *            the jobId to set
 	 */
-	private void setWorkflowId(UUID workflowId) {
-		this.workflowId = workflowId;
+	private void setJobId(UUID jobId) {
+		this.jobId = jobId;
 	}
 
 	public List<AbstractTask> getParents() {
@@ -386,9 +385,9 @@ public abstract class AbstractTask implements Serializable {
 
 			rows = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT parent_id FROM task_parent WHERE workflow_id=? and id = ?;")
+					.withCql("SELECT parent_id FROM task_parent WHERE job_id=? and id = ?;")
 					.asPreparedStatement()
-					.withUUIDValue(this.workflowId)
+					.withUUIDValue(this.jobId)
 					.withUUIDValue(this.getId())
 					.execute().getResult().getRows();
 
@@ -398,7 +397,7 @@ public abstract class AbstractTask implements Serializable {
 			}
 			
 			for (UUID parentid : parentIds) {
-				parents.add(load(workflowId,parentid));
+				parents.add(load(jobId,parentid));
 			}
 		} catch (ConnectionException e) {
 			throw new RuntimeException(e);

@@ -33,6 +33,7 @@ public interface IScheduler {
 	 * 
 	 * @param config
 	 */
+	@SuppressWarnings("rawtypes")
 	public void enable(Map config);
 
 }

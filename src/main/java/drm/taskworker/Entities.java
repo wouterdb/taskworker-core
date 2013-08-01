@@ -100,6 +100,7 @@ public class Entities {
 				.buildKeyspace(ThriftFamilyFactory.getInstance());
 
 		context.start();
+		@SuppressWarnings("deprecation")
 		Keyspace ks = context.getEntity();
 
 		try {
@@ -120,7 +121,7 @@ public class Entities {
 				 * 			100 - deleted
 				 */
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task (id uuid, workflow_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (workflow_id, id))")
+						"CREATE TABLE task (id uuid, job_id uuid, created_at timestamp, type int, worker_name text, PRIMARY KEY (job_id, id))")
 						.execute();
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
 						"CREATE INDEX task_worker ON task(worker_name)")
@@ -135,7 +136,7 @@ public class Entities {
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE task_parent (id uuid, workflow_id uuid, parent_id uuid, PRIMARY KEY(workflow_id, id))")
+						"CREATE TABLE task_parent (id uuid, job_id uuid, parent_id uuid, PRIMARY KEY(job_id, id))")
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
@@ -143,11 +144,7 @@ public class Entities {
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE workflow (id uuid PRIMARY KEY, workflow_name text, started_at timestamp, finished_at timestamp, stats blob)")
-						.execute();
-
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE job (workflow_id uuid, start_task_id uuid, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, PRIMARY KEY(workflow_id, start_after, finish_before))")
+						"CREATE TABLE job (job_id uuid, start_task_id uuid, workflow_name text, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, started_at timestamp, finished_at timestamp, stats blob, PRIMARY KEY(job_id, start_after, finish_before))")
 						.execute();
 
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
@@ -159,7 +156,7 @@ public class Entities {
 						.execute();
 				
 				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL).withCql(
-						"CREATE TABLE priorities (workflow_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, workflow_id))")
+						"CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))")
 						.execute();
 				
 			} catch (ConnectionException ee) {

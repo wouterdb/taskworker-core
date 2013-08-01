@@ -19,8 +19,10 @@
  */
 package drm.taskworker.tasks;
 
-public interface WorkFlowStateListener {
-	public void workflowStarted(WorkflowInstance wf);
-	public void workflowFinished(WorkflowInstance wf);
+import drm.taskworker.Job;
+
+public interface JobStateListener {
+	public void jobStarted(Job job);
+	public void jobFinished(Job job);
 }
 

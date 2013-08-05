@@ -78,7 +78,7 @@ public class JoinWorker extends Worker {
 		CqlResult<String, String> results;
 		try {
 			results = cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT id, type FROM task WHERE workflow_id = ? AND worker_name = ?;")
+					.withCql("SELECT id, type FROM task WHERE job_id = ? AND worker_name = ?;")
 					.asPreparedStatement()
 					.withUUIDValue(task.getJobId())
 					.withStringValue(getName())

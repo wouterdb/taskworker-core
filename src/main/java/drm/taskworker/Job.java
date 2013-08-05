@@ -208,22 +208,6 @@ public class Job {
 	}
 	
 	/**
-	 * Mark this job as started
-	 */
-	public void markStarted() {
-		this.isStarted = true;
-		this.save();
-	}
-	
-	/**
-	 * Mark this job as finished
-	 */
-	public void markFinished() {
-		this.isFinished = true;
-		this.save();
-	}
-	
-	/**
 	 * Get the job id, this is the same as the id of the workflow instance.
 	 */
 	public UUID getJobId() {
@@ -255,27 +239,6 @@ public class Job {
 				.execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
-		}
-	}
-	
-	/**
-	 * Save the state of the job in the database
-	 */
-	public void save() {
-		try {
-			cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("UPDATE job SET started = ?, finished = ? WHERE job_id = ? AND start_after = ? AND finish_before = ?")
-				.asPreparedStatement()
-				.withBooleanValue(this.isStarted)
-				.withBooleanValue(this.isFinished)
-				.withLongValue(this.startedAt.getTime())
-				.withLongValue(this.finishedAt.getTime())
-				.withUUIDValue(this.getJobId())
-				.withLongValue(this.startAfter)
-				.withLongValue(this.finishBefore)
-				.execute();
-		} catch (ConnectionException e) {
-			logger.log(Level.WARNING, "Unable to save job", e);
 		}
 	}
 	
@@ -363,7 +326,22 @@ public class Job {
 		}
 		
 		this.startedAt = startAt;
-		this.markStarted();
+		this.isStarted = true;
+		
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("UPDATE job SET started = ?, started_at = ? WHERE job_id = ? AND start_after = ? AND finish_before = ?")
+				.asPreparedStatement()
+				.withBooleanValue(this.isStarted)
+				.withLongValue(this.startedAt.getTime())
+				
+				.withUUIDValue(this.getJobId())
+				.withLongValue(this.startAfter)
+				.withLongValue(this.finishBefore)
+				.execute();
+		} catch (ConnectionException e) {
+			logger.log(Level.WARNING, "Unable to save job", e);
+		}
 	}
 
 	/**
@@ -388,7 +366,21 @@ public class Job {
 		}
 		
 		this.finishedAt = finishedAt;
-		this.markFinished();
+		this.isFinished = true;
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("UPDATE job SET finished = ?, finished_at = ? WHERE job_id = ? AND start_after = ? AND finish_before = ?")
+				.asPreparedStatement()
+				.withBooleanValue(this.isFinished)
+				.withLongValue(this.finishedAt.getTime())
+
+				.withUUIDValue(this.getJobId())
+				.withLongValue(this.startAfter)
+				.withLongValue(this.finishBefore)
+				.execute();
+		} catch (ConnectionException e) {
+			logger.log(Level.WARNING, "Unable to save job", e);
+		}
 	}
 	
 	/**

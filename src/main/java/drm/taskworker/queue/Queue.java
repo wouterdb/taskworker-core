@@ -170,7 +170,7 @@ public class Queue {
 					.asPreparedStatement();
 			
 			markDelete
-					.withStringValue(this.lockName(task.getWorkerName(), task.getWorkflowID()))
+					.withStringValue(this.lockName(task.getWorkerName(), task.getJobID()))
 					.withIntegerValue(task.getType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();
@@ -224,7 +224,7 @@ public class Queue {
 
 				if (leased_until < now && c.getColumnByName("type").getIntegerValue() == 0) {
 					TaskHandle handle = new TaskHandle();
-					handle.setWorkflowID(workflowId);
+					handle.setJobID(workflowId);
 					handle.setId(c.getUUIDValue("id", null));
 					handle.setWorkerName(taskType);
 					handle.setType(0);
@@ -270,7 +270,7 @@ public class Queue {
 				} else if (type == 1)  {
 					if (leased_until < now) {
 						endTask = new TaskHandle();
-						endTask.setWorkflowID(workflowId);
+						endTask.setJobID(workflowId);
 						endTask.setId(c.getUUIDValue("id", null));
 						endTask.setType(1);
 						endTask.setWorkerName(taskType);
@@ -315,7 +315,7 @@ public class Queue {
 				
 				result = leaseTask
 						.withLongValue(now + leaseSeconds)
-						.withStringValue(this.lockName(handle.getWorkerName(), handle.getWorkflowID()))
+						.withStringValue(this.lockName(handle.getWorkerName(), handle.getJobID()))
 						.withIntegerValue(handle.getType())
 						.withUUIDValue(handle.getId())
 						.execute().getResult();

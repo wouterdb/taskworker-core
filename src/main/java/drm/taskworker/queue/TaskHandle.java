@@ -30,15 +30,15 @@ public class TaskHandle {
 	/**
 	 * @return the workflow_id
 	 */
-	public UUID getWorkflowID() {
-		return workflowId;
+	public UUID getJobID() {
+		return jobId;
 	}
 
 	/**
-	 * @param workflow_id the workflow_id to set
+	 * @param job_id the workflow_id to set
 	 */
-	public void setWorkflowID(UUID workflow_id) {
-		this.workflowId = workflow_id;
+	public void setJobID(UUID job_id) {
+		this.jobId = job_id;
 	}
 
 	/**
@@ -83,7 +83,7 @@ public class TaskHandle {
 		this.type = type;
 	}
 
-	private UUID workflowId;
+	private UUID jobId;
 	private UUID id;
 	private String workerName;
 	private int type;

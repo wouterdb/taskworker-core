@@ -162,7 +162,7 @@ public class Service {
 			// do work!
 			if (!tasks.isEmpty()) {
 				TaskHandle first = tasks.get(0);
-				return AbstractTask.load(first.getWorkflowID(), first.getId());
+				return AbstractTask.load(first.getJobID(), first.getId());
 			}
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);

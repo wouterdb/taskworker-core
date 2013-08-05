@@ -52,7 +52,7 @@ import drm.taskworker.tasks.Task;
 public class Job {
 	private static Logger logger = Logger.getLogger(Job.class.getCanonicalName());
 	
-	private transient Task startTask;
+	private Task startTask;
 	private UUID jobId;
 	private UUID startTaskId;
 	
@@ -480,7 +480,10 @@ public class Job {
 	 * Create a new task that starts the workflow
 	 */
 	public Task newStartTask() {
-		return new Task(this, this.getWorkflowConfig().getWorkflowStart());
+		this.startTask = new Task(this, this.getWorkflowConfig().getWorkflowStart());
+		this.startTaskId = this.startTask.getId();
+		
+		return this.startTask;
 	}
 	
 	/**

@@ -12,7 +12,7 @@ prerequisites: Java 7, git, maven3 (For Ubuntu, see https://launchpad.net/~natec
 ----------------------------
 
 We use the datastax packages for cassandra.
-For instructions, see http://www.datastax.com/docs/1.1/install/index
+For instructions, see http://www.datastax.com/docs/1.2/install/index
 For red-hat like systems, as root, do
 
     cat > /etc/yum.repos.d/datastax.repo <<EOF

@@ -98,7 +98,7 @@ public class Service {
 		for (Job job : jobs) {
 			if (!job.isStarted()) {
 				logger.info("Found a job to start " + job.getJobId());
-				this.startWorkflow(job);
+				this.startJob(job);
 			}
 		}
 	}
@@ -109,7 +109,7 @@ public class Service {
 	 * @param workflow
 	 *            The workflow to start
 	 */
-	public void startWorkflow(Job job) {
+	public void startJob(Job job) {
 		Task start = job.getStartTask();
 
 		// notify others
@@ -254,7 +254,7 @@ public class Service {
 				float weight = rrs.getWeight(i);
 				
 				cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("UPDATE priorities SET weight = ? WHERE workflow_id = ? AND worker_type = ?")
+					.withCql("UPDATE priorities SET weight = ? WHERE job_id = ? AND worker_type = ?")
 					.asPreparedStatement()
 					.withFloatValue(weight)
 					.withUUIDValue(workflowId)
@@ -292,7 +292,7 @@ public class Service {
 				ColumnList<String> columns = row.getColumns();
 				
 				weights[i] = columns.getColumnByName("weight").getFloatValue();
-				names[i] = columns.getColumnByName("workflow_id").getUUIDValue().toString();
+				names[i] = columns.getColumnByName("job_id").getUUIDValue().toString();
 				i++;
 			}
 			

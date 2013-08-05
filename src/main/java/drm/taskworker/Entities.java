@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang3.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import com.google.common.collect.ImmutableMap;
@@ -107,7 +106,7 @@ public class Entities {
 
 		try {
 			ks.prepareQuery(CF_STANDARD1)
-					.withCql("SELECT COUNT(*) FROM workflow;").execute();
+					.withCql("SELECT COUNT(*) FROM job;").execute();
 		} catch (ConnectionException e) {
 			try {
 				createKeyspace(ks);
@@ -132,10 +131,16 @@ public class Entities {
 				queries.add("CREATE INDEX job_finished ON job (finished)");
 				queries.add("CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))");
 				
-				String query = "BEGIN BATCH\n" + StringUtils.join(queries, ";\n") + "APPLY BATCH;";
-				
-				ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
-					.withCql(query).execute();
+				for (String q : queries) {
+					logger.info("Executing query for creating taskworker keyspace: " + q);
+					ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
+						.withCql(q).execute();
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
+				}
 				
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");

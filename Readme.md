@@ -1,11 +1,6 @@
-DREAMaaS Single Machine JDK
+DREAMaaS Middleware SDK
 
-This JDK allows experimenting with the DREAMaaS API on a single machine. 
-
-It uses the Capedwarf implementation of the Google app engine API, which runs on JBoss AS 7.
-For short term storage it uses JBoss' infinispan.
-For long term storage it uses Cassandra.
-
+This SDK allows experimenting with the DREAMaaS API on a cluster.
 
 1.Setup
 ---------------
@@ -39,26 +34,10 @@ to see if it runs correctly
 
     systemctl status cassandra.service
 
+The distributed version requires a cluster of at least three Cassandra servers
 
 
-1.2.Installing the server
--------------------------
-Download the patched server form
-
-https://distrinet.cs.kuleuven.be/software/DREAMaaS/jboss-as-7.2.0.Final.tar.gz
-
-extract the archive
-
-start the server with
-
-    bin/standalone.sh -c standalone-capedwarf.xml
-
-to clear the cache, do
-
-    rm -r standalone/data
-
-
-1.3.Getting the DREAMaaS SDK
+1.2.Getting the DREAMaaS SDK
 ---------------------
 
 The sdk and examples can be cloned from github (https://github.com/dreamaas)
@@ -74,13 +53,10 @@ more specific,
     mvn clean install
     popd
 
-to deploy the example application, go to the directory containing the server and run
-
-    ./bin/jboss-cli.sh
-    connect
-    deploy --name=ROOT.war [path of dreamaas sdk]/taskworker-examples/target/examples-0.0.1-SNAPSHOT.war
-
-now browse to http://127.0.0.1:8080/
+This generates two artifacts:
+    - a jar that contains the platform and the workers that can be started from
+      the commandline.
+    - a war that contains the example servlets that needs to be installed in a tomcat
 
 
 2.Rolling your own

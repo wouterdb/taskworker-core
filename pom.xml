@@ -16,7 +16,7 @@
 		<repository>
 			<id>dnetfs</id>
 			<name>Dreamaas Internal Repository</name>
-			<url>scpexe://dnetfs.cs.kuleuven.be/cw/dnetw3/software/DREAMaaS/maven</url>
+			<url>scp://dnetfs.cs.kuleuven.be/cw/dnetw3/software/DREAMaaS/maven</url>
 		</repository>
 	</distributionManagement>
 

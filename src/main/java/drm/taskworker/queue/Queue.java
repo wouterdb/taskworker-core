@@ -115,7 +115,7 @@ public class Queue {
 	 * @return A list of taskhandles 
 	 * @throws ConnectionException
 	 */
-	public List<TaskHandle> leaseTasks(long lease,
+	public synchronized List<TaskHandle> leaseTasks(long lease,
 			TimeUnit unit, int limit, String taskType, UUID workflowId)
 			throws ConnectionException {
 		
@@ -127,25 +127,18 @@ public class Queue {
 		
 		boolean distributed = Boolean.parseBoolean(System.getProperty("dreamaas.distributed"));
 		
-		if (distributed) {
-			// get a lock
-			if (!this.lock(taskType, workflowId)) {
-				logger.warning("Unable to aquire a lock on " + workflowId.toString() + " - " + taskType);
-				return handles;
-			}
-				
-			handles = leaseWithNoLock(lease, unit, limit, taskType, workflowId);
-			
-			// release the lock
-			if (!this.release(taskType, workflowId)) {
-				logger.warning("Unable to release lock on " + workflowId.toString() + " - " + taskType);
-				return null;
-			}
-		} else {
-			// use synchronised
-			synchronized (this.cs) {
-				handles = leaseWithNoLock(lease, unit, limit, taskType, workflowId);
-			}
+		// get a lock if distributed is true
+		if (distributed && !this.lock(taskType, workflowId)) {
+			logger.warning("Unable to aquire a lock on " + workflowId.toString() + " - " + taskType);
+			return handles;
+		}
+
+		handles = leaseWithNoLock(lease, unit, limit, taskType, workflowId);
+
+		// release the lock if distributed true
+		if (distributed && !this.release(taskType, workflowId)) {
+			logger.warning("Unable to release lock on " + workflowId.toString() + " - " + taskType);
+			return null;
 		}
 
 		return handles;
@@ -184,8 +177,9 @@ public class Queue {
 	}
 
 	/**
-	 * Lease tasks
+	 * Lease tasks without requesting a lock
 	 * 
+	 * @pre requires a lock
 	 * @see Queue#leaseTasks(long, TimeUnit, int, String, UUID)
 	 */
 	private List<TaskHandle> leaseWithNoLock(long lease, TimeUnit unit, int limit,

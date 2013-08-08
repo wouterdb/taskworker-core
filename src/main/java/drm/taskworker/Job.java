@@ -439,7 +439,7 @@ public class Job {
 
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("UPDATE workflow set stats = ? where id = ?;")
+					.withCql("UPDATE job SET stats = ? WHERE job_id = ?;")
 					.asPreparedStatement()
 					.withByteBufferValue(out, Entities.STATS_SERIALISER)
 					.withUUIDValue(getJobId()).execute();

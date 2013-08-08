@@ -261,16 +261,19 @@ public abstract class AbstractTask {
 	/**
 	 * Load a task from the database
 	 */
-	public static AbstractTask load(UUID workflowID, UUID id) {
-		if (workflowID == null || id == null) {
-			throw new IllegalArgumentException();
+	public static AbstractTask load(UUID jobId, UUID id) {
+		if (jobId == null) {
+			throw new IllegalArgumentException("Job ID is null");
+		}
+		if (id == null) {
+			throw new IllegalArgumentException("Task id is null");
 		}
 		try {
 			OperationResult<CqlResult<	String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
 					.withCql(
 							"SELECT * FROM task WHERE job_id = ? AND id = ?;")
-					.asPreparedStatement().withUUIDValue(workflowID)
+					.asPreparedStatement().withUUIDValue(jobId)
 					.withUUIDValue(id).execute();
 
 			for (Row<String, String> row : result.getResult().getRows()) {

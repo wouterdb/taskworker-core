@@ -33,8 +33,6 @@ import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
 import com.netflix.astyanax.serializers.ObjectSerializer;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerContext;
 
 import drm.taskworker.Entities;
 import drm.taskworker.Job;
@@ -46,7 +44,6 @@ import drm.taskworker.Job;
  */
 public class Task extends AbstractTask {
 	private Map<String, Object> params = new HashMap<>();
-	private transient TimerContext timer;
 
 	/**
 	 * Create a task for a worker
@@ -155,12 +152,10 @@ public class Task extends AbstractTask {
 	}
 
 	public void setStartedAt() {
-		timer = Metrics.newTimer(getClass(), getWorker()).time();
 		super.setStartedAt();
 	}
 
 	public void setFinishedAt() {
-		timer.stop();
 		super.setFinishedAt();
 	}
 

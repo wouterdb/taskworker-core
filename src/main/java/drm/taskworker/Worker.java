@@ -26,6 +26,9 @@ import java.util.logging.Logger;
 
 import org.apache.commons.lang.ArrayUtils;
 
+import com.codahale.metrics.Timer.Context;
+
+import drm.taskworker.monitoring.Metrics;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.EndTask;
@@ -114,10 +117,14 @@ public abstract class Worker implements Runnable {
 
 		while (this.working) {
 			try {
+				Context tcLease = Metrics.timer("worker.lease").time();
+				Context tcNoLease = Metrics.timer("worker.nolease").time();
 				AbstractTask task = svc.getTask(this.name);
-
+				
 				if (task != null) {
-					
+					tcLease.stop();
+					Context tc = Metrics.timer("worker.work." + this.name).time();
+
 					trace("FETCHED",task);
 
 					// execute the task
@@ -188,7 +195,10 @@ public abstract class Worker implements Runnable {
 					if (sleepTime < 0) {
 						sleepTime = 0;
 					}
+					
+					tc.stop();
 				} else {
+					tcNoLease.stop();
 					sleepTime += 10;
 					if (sleepTime > 200) {
 						sleepTime = 200;

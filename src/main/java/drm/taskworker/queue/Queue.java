@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.codahale.metrics.Timer.Context;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
@@ -40,6 +41,7 @@ import com.netflix.astyanax.recipes.locks.ColumnPrefixDistributedRowLock;
 import com.netflix.astyanax.retry.BoundedExponentialBackoff;
 
 import drm.taskworker.Entities;
+import drm.taskworker.monitoring.Metrics;
 import drm.taskworker.tasks.AbstractTask;
 
 /**
@@ -75,6 +77,8 @@ public class Queue {
 	}
 	
 	private boolean lock(String workerName, UUID workflowID) {
+		Context tc = Metrics.timer("queue.lock").time();
+		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
 		try {
@@ -83,11 +87,15 @@ public class Queue {
 			 logger.log(Level.SEVERE, "Unable to aquire lock", e);
 			 e.printStackTrace();
 			 return false;
+		 } finally {
+			 tc.stop();
 		 }
 		return true;
 	}
 	
 	private boolean release(String workerName, UUID workflowID) {
+		Context tc = Metrics.timer("queue.unlock").time();
+		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
 		try {
@@ -95,6 +103,8 @@ public class Queue {
 		 } catch (Exception e) {
 			 logger.log(Level.SEVERE, "Unable to release lock", e);
 			 return false;
+		 } finally {
+			 tc.stop();
 		 }
 		return true;
 	}
@@ -133,7 +143,9 @@ public class Queue {
 			return handles;
 		}
 
+		Context tc = Metrics.timer("queue.lease").time();
 		handles = leaseWithNoLock(lease, unit, limit, taskType, workflowId);
+		tc.stop();
 
 		// release the lock if distributed true
 		if (distributed && !this.release(taskType, workflowId)) {
@@ -323,6 +335,7 @@ public class Queue {
 	 * Remove a task from the queue
 	 */
 	public void finishTask(AbstractTask task) {
+		Context tc = Metrics.timer("queue.finish").time();
 		// TODO: ensure that we still have a lease here
 		logger.info("Removing task " + task.getId() + " " + task.getTaskType());
 		try {
@@ -348,6 +361,8 @@ public class Queue {
 			}
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
+		} finally {
+			tc.stop();
 		}
 	}
 
@@ -355,6 +370,7 @@ public class Queue {
 	 * Add a task to the queue
 	 */
 	public void addTask(AbstractTask task) {
+		Context tc = Metrics.timer("queue.addtask").time();
 		logger.info("Inserting task " + task.getId() + " " + task.getTaskType());
 		try {
 			PreparedCqlQuery<String, String> addTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
@@ -369,6 +385,8 @@ public class Queue {
 			
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
+		} finally {
+			tc.stop();
 		}
 	}
 

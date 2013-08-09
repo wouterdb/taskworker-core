@@ -240,6 +240,24 @@ public class Service {
 			}
 		}
 	}
+	
+	/**
+	 * Remove a job from the priorities table
+	 */
+	public void removeJobPriority(Job job, List<String> workers) {
+		try {
+			for(String worker : workers) {
+				cs().prepareQuery(Entities.CF_STANDARD1)
+						.withCql("DELETE FROM priorities WHERE job_id = ? AND worker_type = ?")
+						.asPreparedStatement()
+						.withUUIDValue(job.getJobId())
+						.withStringValue(worker)
+						.execute();
+			}
+		} catch (ConnectionException e) {
+			logger.severe("Unable to remove priorities from table for job " + job.getJobId());
+		}
+	}
 
 	/**
 	 * set scheduling priorities for a specific worker type
@@ -250,14 +268,14 @@ public class Service {
 	public void setPriorities(String workerType, WeightedRoundRobin rrs) {
 		try {
 			for (int i = 0; i < rrs.getLength(); i++) {
-				UUID workflowId = UUID.fromString(rrs.getName(i));
+				UUID jobId = UUID.fromString(rrs.getName(i));
 				float weight = rrs.getWeight(i);
 				
 				cs().prepareQuery(Entities.CF_STANDARD1)
 					.withCql("UPDATE priorities SET weight = ? WHERE job_id = ? AND worker_type = ?")
 					.asPreparedStatement()
 					.withFloatValue(weight)
-					.withUUIDValue(workflowId)
+					.withUUIDValue(jobId)
 					.withStringValue(workerType)
 					.execute();
 			}

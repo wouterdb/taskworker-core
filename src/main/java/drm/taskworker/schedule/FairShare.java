@@ -40,7 +40,7 @@ import drm.taskworker.tasks.JobStateListener;
 public class FairShare implements IScheduler, JobStateListener {
 
 	private List<String> workers;
-	private List<String> workflows = new LinkedList<>();
+	private List<String> jobs = new LinkedList<>();
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -64,29 +64,30 @@ public class FairShare implements IScheduler, JobStateListener {
 		}
 
 		if (old != null) {
-			workflows.addAll(Arrays.asList(old.getNames()));
+			jobs.addAll(Arrays.asList(old.getNames()));
 		}
 		rebuild();
 	}
 
 	@Override
 	public synchronized void jobStarted(Job job) {
-		workflows.add(job.getJobId().toString());
+		jobs.add(job.getJobId().toString());
 		rebuild();
 	}
 
 	@Override
 	public synchronized void jobFinished(Job job) {
-		workflows.remove(job.getJobId().toString());
+		jobs.remove(job.getJobId().toString());
+		Service.get().removeJobPriority(job, workers);
 		rebuild();
 	}
 
 	private void rebuild() {
-		float[] weights = new float[workflows.size()];
+		float[] weights = new float[jobs.size()];
 		Arrays.fill(weights, 1.0f);
 
 		WeightedRoundRobin wrr = new WeightedRoundRobin(
-				workflows.toArray(new String[workflows.size()]), weights);
+				jobs.toArray(new String[jobs.size()]), weights);
 		
 		for (String worker : workers) {
 			Service.get().setPriorities(worker, wrr);

@@ -58,6 +58,31 @@ This generates two artifacts:
       the commandline.
     - a war that contains the example servlets that needs to be installed in a tomcat
 
+1.3 Executing the examples
+--------------------------
+
+Section 1.2 generates two artifacts (jar and war) which are required to setup a 
+working platform.
+
+The war should be deployed as ROOT.war in a servlet container such as Tomcat. 
+This war contains a webinterface to submit jobs and inspect the results.
+
+The jar contains the middleware platform and the code of the workers. On each
+worker server an instance of this jar should be started. It can be started like this:
+
+java -jar examples.jar workers.yaml
+
+With workers.yaml the configuration file (src/main/webapp/WEB-INF/workers.yaml
+in the examples project).
+
+In a distributed setting the workers need at least 3 cassandra instances. To start
+a single node development version add the -Ddreamaas.distributed=false parameter.
+With -Ddreamaas.cassandra.seed a list of seeds nodes can be given.
+
+The archive worker of the examples also requires the address of an archival services
+which is currently included in the war file. For example:
+-Ddreamaas.archive.url=http://127.0.0.1:8080/download
+
 
 2.Rolling your own
 ------------------

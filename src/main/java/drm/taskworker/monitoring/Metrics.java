@@ -55,7 +55,6 @@ public class Metrics {
 //			normalRegistery.registerAll(new BufferPoolMetricSet(mbs));
 			//normalRegistery.register("gc",new GarbageCollectorMetricSet());
 			normalRegistery.register("jvm.memory",new MemoryUsageGaugeSet(ManagementFactory.getMemoryMXBean(),Collections.<MemoryPoolMXBean> emptyList()));
-			new PatterningJMXReporter("metrics",mbs, normalRegistery, normalNames).start();
 			ConsoleReporter.forRegistry(normalRegistery).build().start(30, TimeUnit.SECONDS);
 		}catch (RuntimeException e) {
 			Logger.getLogger(Metrics.class.getName()).log(Level.SEVERE,"metrics failed to load",e);

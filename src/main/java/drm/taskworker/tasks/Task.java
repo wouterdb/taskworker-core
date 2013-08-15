@@ -207,7 +207,7 @@ public class Task extends AbstractTask {
 
 	@Override
 	public String toString() {
-		return String.format("Task [workflow=%s, id=%s, worker=%s, nparams=%d]",
+		return String.format("Task [job=%s, id=%s, worker=%s, nparams=%d]",
 				getJobId(), getId(), getWorker(), params.size());
 	}
 

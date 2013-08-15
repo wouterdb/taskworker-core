@@ -10,6 +10,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<jersey.version>2.2</jersey.version>
 	</properties>
 
 	<distributionManagement>
@@ -19,6 +20,19 @@
 			<url>scp://dnetfs.cs.kuleuven.be/cw/dnetw3/software/DREAMaaS/maven</url>
 		</repository>
 	</distributionManagement>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.glassfish.jersey</groupId>
+                <artifactId>jersey-bom</artifactId>
+                <version>${jersey.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
 
 	<repositories>
 		<repository>
@@ -31,6 +45,11 @@
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
+		<repository>  
+            <id>maven-restlet</id>  
+            <name>Public online Restlet repository</name>  
+            <url>http://maven.restlet.org</url>  
+        </repository>  
 	</repositories>
 
 	<!-- TODO lighten deps http://stackoverflow.com/questions/13572502/how-to-exclude-a-dependency-for-a-specific-scope-only 
@@ -81,17 +100,6 @@
             <artifactId>astyanax-recipes</artifactId>
             <version>1.56.42</version>
         </dependency>
-		<!-- 
-		<dependency>
-			<groupId>org.apache.cassandra</groupId>
-			<artifactId>cassandra-all</artifactId>
-			<version>1.2.2</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.cassandra</groupId>
-			<artifactId>cassandra-thrift</artifactId>
-			<version>1.2.2</version>
-		</dependency>-->
         <dependency>
             <groupId>com.codahale.metrics</groupId>
             <artifactId>metrics-core</artifactId>
@@ -117,6 +125,32 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
 			<version>3.1</version>
+		</dependency>
+		
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-grizzly2-http</artifactId>
+        </dependency>
+         <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-moxy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.9</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+		<dependency>
+		    <groupId>org.glassfish.jersey.media</groupId>
+		    <artifactId>jersey-media-json-processing</artifactId>
+		    <version>2.2</version>
 		</dependency>
 	</dependencies>
 

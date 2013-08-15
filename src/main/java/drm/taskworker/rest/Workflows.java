@@ -17,41 +17,32 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker.tasks;
+package drm.taskworker.rest;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 
+import drm.taskworker.config.Config;
 
-
-/**
- * A task used to signal that this is the end of a workflow
- * 
- * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
- */
-public class EndTask extends AbstractTask {
-	/**
-	 * Signal the end of a workflow to the next step in the workflow 
-	 * 
-	 * @param parent The parent of this task
-	 * @param worker The name of the worker
-	 */
-	public EndTask(AbstractTask parent, String worker) {
-		super(parent.getJobId(), parent, worker);
-	}
-	
-	/**
-	 * Constructor for persistence
-	 */
-	EndTask() { super(); }
-
-	@Override
-	public int getTaskType() {
-		return 1;
-	}
-
-	@Override
-	public String toString() {
-		return String.format(
-				"EndTask [job=%s, id=%s, worker=%s]",
-				getJobId(), getId(), getWorker());
-	}
+@Path("/workflows")
+public class Workflows {
+    /**
+     * Method handling HTTP GET requests.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getJobs() {
+		Config cfg = Config.getConfig();
+        JsonArrayBuilder builder = Json.createArrayBuilder();
+        
+		for (String workflow : cfg.getWorkflows().keySet()) {
+        	builder.add(workflow);
+        }
+                
+        return builder.build().toString();
+    }
 }

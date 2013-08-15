@@ -19,10 +19,6 @@
 
 package drm.taskworker;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -37,17 +33,11 @@ import drm.taskworker.config.Config;
 public class WorkerRegistration {
 	private List<Worker> background_threads = null;
 	private Config config = null;
-	protected static final Logger logger = Logger.getLogger(Worker.class
-			.getCanonicalName());
+	protected static final Logger logger = Logger.getLogger(WorkerRegistration.class.getCanonicalName());
 
-	public WorkerRegistration(File file) {
+	public WorkerRegistration() {
 		background_threads = new ArrayList<Worker>();
-		try {
-			InputStream input = new FileInputStream(file);
-			config = Config.loadConfig(input);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+		config = Config.getConfig();
 	}
 
 	private void addWorker(Worker worker) {

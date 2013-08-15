@@ -20,6 +20,13 @@
 package drm.taskworker;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.logging.LogManager;
+
+import drm.taskworker.config.Config;
+import drm.taskworker.rest.RestServer;
 
 /**
  * The main application
@@ -30,11 +37,18 @@ public class App {
 
 	/**
 	 * @param args
+	 * @throws IOException 
+	 * @throws SecurityException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws SecurityException, IOException {
 		if (args.length != 1) {
 			System.err.println("A path to the configuration file is required.");
 			System.exit(1);
+		}
+		
+		InputStream logging_config = App.class.getClassLoader().getResourceAsStream("logging.properties");
+		if (logging_config != null) {
+			LogManager.getLogManager().readConfiguration(logging_config);
 		}
 		
 		String path = args[0];
@@ -45,8 +59,13 @@ public class App {
 			System.exit(1);
 		}
 		
-		WorkerRegistration wr = new WorkerRegistration(file);
+		InputStream input = new FileInputStream(file);
+		Config.loadConfig(input);
+		
+		WorkerRegistration wr = new WorkerRegistration();
 		wr.start();
+		
+		new RestServer().start();
 
 		// wait forever
 		while(true) {

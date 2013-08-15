@@ -17,41 +17,35 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 */
 
-package drm.taskworker.tasks;
+package drm.taskworker.rest;
 
+import java.util.List;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 
+import drm.taskworker.Job;
 
-/**
- * A task used to signal that this is the end of a workflow
- * 
- * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
- */
-public class EndTask extends AbstractTask {
-	/**
-	 * Signal the end of a workflow to the next step in the workflow 
-	 * 
-	 * @param parent The parent of this task
-	 * @param worker The name of the worker
-	 */
-	public EndTask(AbstractTask parent, String worker) {
-		super(parent.getJobId(), parent, worker);
-	}
-	
-	/**
-	 * Constructor for persistence
-	 */
-	EndTask() { super(); }
-
-	@Override
-	public int getTaskType() {
-		return 1;
-	}
-
-	@Override
-	public String toString() {
-		return String.format(
-				"EndTask [job=%s, id=%s, worker=%s]",
-				getJobId(), getId(), getWorker());
-	}
+@Path("/jobs")
+public class Jobs {
+    /**
+     * Method handling HTTP GET requests.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getJobs() {
+        List<Job> jobs = drm.taskworker.Job.getAll();
+        
+        JsonArrayBuilder builder = Json.createArrayBuilder();
+        
+        for (Job job : jobs) {
+        	builder.add(job.getJobId().toString());
+        }
+                
+        return builder.build().toString();
+    }
 }

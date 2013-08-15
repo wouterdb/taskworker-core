@@ -19,9 +19,12 @@
 
 package drm.taskworker.config;
 
-import java.io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.yaml.snakeyaml.Yaml;
 
@@ -35,7 +38,7 @@ public class Config {
 	private Map<String, WorkerConfig> workers = null;
 	private Map<String, WorkflowConfig> workflows = null;
 	private SchedulerConfig scheduler = null;
-	
+	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
 	/**
 	 * The default constructor for the configuration.
@@ -44,27 +47,40 @@ public class Config {
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static Config loadConfig(InputStream yamlConfigFile) {
-		if (config == null) {
-			Yaml yaml = new Yaml();
-			Map data = (Map) yaml.load(yamlConfigFile);
+	private static Config loadConfig() {
+		String path = System.getProperty("dreamaas.configfile", "config.yaml");
+		logger.info("Loading configuration file " + path);
+		
+		File file = new File(path);
+		if (!file.canRead()) {
+			System.err.println(path + " is not readable.");
+			System.exit(1);
+		}
+		
+		Yaml yaml = new Yaml();
+		Map data;
+		try {
+			data = (Map) yaml.load(new FileInputStream(file));
+		} catch (FileNotFoundException e) {
+			throw new IllegalStateException("Unable to load config yaml file.");
+		}
+
+		Config cfg = new Config();
+		cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
+		cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
+		cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
+		
+		return cfg;
+	}
 	
-			Config cfg = new Config();
-			cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
-			cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
-			cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
-			
-			config = cfg;
+	public static Config getConfig() {
+		if (config == null) {
+			config = loadConfig();
 		}
 
 		return config;
 	}
 	
-
-	public static Config getConfig() {
-		return config;
-	}
-
 	/**
 	 * @return the workflows
 	 */

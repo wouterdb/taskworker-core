@@ -70,7 +70,7 @@ public class Entities {
 				.put("strategy_options", ImmutableMap.<String, Object>builder()
 						.put("datacenter1", "1")
 			            .build())
-			        .put("strategy_class",     "NetworkTopologyStrategy")
+			        .put("strategy_class", "NetworkTopologyStrategy")
 			        .build())
 		);
 		

@@ -19,6 +19,8 @@
 
 package drm.taskworker.rest;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.json.Json;
@@ -30,6 +32,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import drm.taskworker.tasks.AbstractTask;
+
 
 @Path("/job/{id}")
 public class Job {
@@ -38,7 +42,7 @@ public class Job {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public String newJob(@PathParam("id")String jobId) {
+    public String getJob(@PathParam("id")String jobId) {
         UUID id = UUID.fromString(jobId);
     	
         drm.taskworker.Job job = drm.taskworker.Job.load(id);
@@ -58,6 +62,21 @@ public class Job {
         if (job.isFinished()) {
         	builder.add("finished_at", job.getFinishedAt().getTime() / 1000);
         }
+        
+		Map<String, Integer> stats = new HashMap<>();
+		for (AbstractTask task : job.getHistory()) {
+			if (!stats.containsKey(task.getWorker())) {
+				stats.put(task.getWorker(), 0);
+			}
+			int value = stats.get(task.getWorker()) + 1;
+			stats.put(task.getWorker(), value);
+		}
+		
+		JsonObjectBuilder statsBuilder = Json.createObjectBuilder();
+		for (String worker : stats.keySet()) {
+			statsBuilder.add(worker, stats.get(worker));
+		}
+		builder.add("history", statsBuilder);
                 
         JsonObject jsonJob = builder.build();
         return jsonJob.toString();

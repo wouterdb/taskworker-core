@@ -24,6 +24,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * The configuration of a worker.
@@ -34,6 +35,7 @@ public class WorkerConfig {
 	private String workerName = null;
 	private String workerClass = null;
 	private int threads = 1;
+	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
 	public WorkerConfig(String workerName, String workerClass) {
 		this.workerClass = workerClass;
@@ -77,7 +79,7 @@ public class WorkerConfig {
 			Constructor<drm.taskworker.Worker> workerCtor = workerCls.getConstructor(String.class);
 			return workerCtor.newInstance(this.getWorkerName());
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			logger.severe("Unable to load class " + this.getWorkerClass() + " for worker " + this.getWorkerName());
 		} catch (NoSuchMethodException e) {
 			throw new IllegalArgumentException("Class " + this.workerClass + " should have a constructor that accepts the name of the worker.");
 		} catch (SecurityException e) {

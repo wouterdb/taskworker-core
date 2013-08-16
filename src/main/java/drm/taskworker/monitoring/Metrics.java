@@ -19,21 +19,19 @@
  */
 package drm.taskworker.monitoring;
 
+import static drm.taskworker.config.Config.cfg;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.net.InetSocketAddress;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 
-import org.apache.commons.lang.StringUtils;
-
+import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
@@ -45,89 +43,44 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 
 public class Metrics {
 
-	private static MetricRegistry normalRegistery;
+	private static MetricRegistry registery;
 
 	private static Logger logger = Logger.getLogger(Metrics.class.getName());
 
 	static synchronized void init() {
-		if (normalRegistery != null) {
+		if (registery != null) {
 			return;
 		}
 		
 		try {
-			normalRegistery = new MetricRegistry();
+			registery = new MetricRegistry();
 			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
-			normalRegistery.registerAll(new BufferPoolMetricSet(mbs));
-			normalRegistery.register("gc", new GarbageCollectorMetricSet());
-			normalRegistery.register("jvm.memory",
+			registery.registerAll(new BufferPoolMetricSet(mbs));
+			registery.register("gc", new GarbageCollectorMetricSet());
+			registery.register("jvm.memory",
 					new MemoryUsageGaugeSet(ManagementFactory.getMemoryMXBean(), Collections.<MemoryPoolMXBean> emptyList()));
 
-			// ConsoleReporter.forRegistry(normalRegistery).build().start(30, TimeUnit.SECONDS);
-			final Graphite graphite = new Graphite(new InetSocketAddress("localhost", 2003));
-			final GraphiteReporter reporter = GraphiteReporter
-					.forRegistry(normalRegistery).prefixedWith("localhost")
-					.convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS)
-					.filter(MetricFilter.ALL).build(graphite);
+			if (cfg().getProperty("dreamaas.metrics.console", false)) {
+				ConsoleReporter.forRegistry(registery).build().start(cfg().getProperty("dreamaas.metrics.console.interval", 30), TimeUnit.SECONDS);
+			}
 			
-			reporter.start(10, TimeUnit.SECONDS);
+			if (cfg().getProperty("dreamaas.metrics.graphite", false)) {
+				final Graphite graphite = new Graphite(new InetSocketAddress(
+						cfg().getProperty("dreamaas.metrics.graphite.host", "localhost"), 
+						Integer.parseInt(cfg().getProperty("dreamaas.metrics.graphite.port", "2003"))));
+				
+				final GraphiteReporter reporter = GraphiteReporter
+						.forRegistry(registery).prefixedWith(cfg().getProperty("dreamaas.metrics.graphite.prefix", "localhost"))
+						.convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS)
+						.filter(MetricFilter.ALL).build(graphite);
+				
+				reporter.start(cfg().getProperty("dreamaas.metrics.graphite.interval", 30), TimeUnit.SECONDS);
+				logger.info("Started metrics graphite reporter");
+			}
 		} catch (RuntimeException e) {
-			Logger.getLogger(Metrics.class.getName()).log(Level.SEVERE,
-					"metrics failed to load", e);
+			logger.log(Level.SEVERE, "metrics failed to load", e);
 			throw e;
-		}
-
-	}
-
-	/**
-	 * naming:
-	 * 
-	 * [type].[typeInstance|null].[metric].[submetric]
-	 * 
-	 * @return
-	 */
-	public static MetricRegistry getNormalRegistry() {
-		if (normalRegistery == null)
-			init();
-		return normalRegistery;
-	}
-
-	private final static String[] normalNames = new String[] { "metric" };
-
-	public static class PatterningJMXReporter extends JmxReporter {
-
-		private String[] names;
-
-		public PatterningJMXReporter(String prefix, MBeanServer mBeanServer,
-				MetricRegistry registry, String[] names) {
-			super(mBeanServer, prefix, registry, MetricFilter.ALL,
-					TimeUnit.SECONDS, TimeUnit.MILLISECONDS);
-			this.names = names;
-		}
-
-		@Override
-		protected ObjectName createName(String prefix, String type, String name) {
-			String[] parts = name.split("\\.");
-			if (parts.length > names.length) {
-				String first = StringUtils.join(parts, '.', 0, parts.length
-						- names.length + 1);
-				String[] p2 = new String[names.length];
-				System.arraycopy(parts, parts.length - names.length + 1, p2, 1,
-						names.length - 1);
-				p2[0] = first;
-				parts = p2;
-
-			}
-			Hashtable<String, String> kvs = new Hashtable<String, String>();
-			for (int i = 0; i < parts.length; i++) {
-				kvs.put(names[i], parts[i].equals("null") ? "" : parts[i]);
-			}
-			try {
-				return new ObjectName(prefix, kvs);
-			} catch (MalformedObjectNameException e) {
-				logger.log(Level.WARNING, "could not get name for metric", e);
-				return super.createName(prefix, type, name);
-			}
 		}
 
 	}
@@ -140,10 +93,11 @@ public class Metrics {
 	 * @return
 	 */
 	private static MetricRegistry getRegistry() {
-		if (normalRegistery == null)
+		if (registery == null) {
 			init();
+		}
 
-		return normalRegistery;
+		return registery;
 	}
 
 	public static Timer timer(String name) {

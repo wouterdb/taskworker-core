@@ -41,6 +41,7 @@ import com.netflix.astyanax.recipes.locks.ColumnPrefixDistributedRowLock;
 import com.netflix.astyanax.retry.BoundedExponentialBackoff;
 
 import drm.taskworker.Entities;
+import drm.taskworker.config.Config;
 import drm.taskworker.monitoring.Metrics;
 import drm.taskworker.tasks.AbstractTask;
 
@@ -135,7 +136,7 @@ public class Queue {
 		
 		List<TaskHandle> handles = null;
 		
-		boolean distributed = Boolean.parseBoolean(System.getProperty("dreamaas.distributed"));
+		boolean distributed = Boolean.parseBoolean(Config.getConfig().getProperty("dreamaas.distributed"));
 		
 		// get a lock if distributed is true
 		if (distributed && !this.lock(taskType, workflowId)) {

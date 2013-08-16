@@ -48,33 +48,6 @@ public class WorkerRegistration {
 	}
 
 	public void start() {
-		// first ensure that the keyspace exists
-		Entities.cs();
-		
-		if (config.getScheduler() != null) {
-			logger.info("Starting scheduler");
-			//scheduler means master server
-			config.getScheduler().create();
-
-			// start a thread to manage the queue service
-			Thread thread = new Thread(new Runnable() {
-						@Override
-						public void run() {
-							while (true) {
-								Service.get().startJobs();
-								try {
-									Thread.sleep(2000);
-								} catch (InterruptedException e) {
-									e.printStackTrace();
-								}
-							}
-						}
-					});
-			
-			thread.setDaemon(true);
-			thread.start();
-		}
-
 		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
 			logger.info("Starting " + worker.getWorkerName() + " thread");
 			for (int i = 0; i < worker.getThreads(); i++) {

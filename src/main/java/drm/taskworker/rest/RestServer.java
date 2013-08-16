@@ -21,10 +21,14 @@ package drm.taskworker.rest;
 
 import java.net.URI;
 
+import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
+import static drm.taskworker.config.Config.cfg;
+
 public class RestServer {
+	private HttpServer server = null;
 	public RestServer() {
 		
 	}
@@ -36,10 +40,14 @@ public class RestServer {
 
         // create and start a new instance of grizzly http server
         // exposing the Jersey application at BASE_URI
-        GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
+         server = GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
+	}
+	
+	public void stop() {
+		server.stop();
 	}
 	
     // Base URI the Grizzly HTTP server will listen on
-    public static final String BASE_URI = "http://localhost:8080/";
+    public static final String BASE_URI = "http://localhost:" + cfg().getProperty("dreamaas.rest.port", 8123) + "/";
 
 }

@@ -22,8 +22,13 @@ package drm.taskworker.config;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.yaml.snakeyaml.Yaml;
@@ -40,6 +45,8 @@ public class Config {
 	private SchedulerConfig scheduler = null;
 	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
+	private Map<String,String> properties = new HashMap<>();
+	
 	/**
 	 * The default constructor for the configuration.
 	 */
@@ -48,7 +55,39 @@ public class Config {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static Config loadConfig() {
-		String path = System.getProperty("dreamaas.configfile", "config.yaml");
+		Config cfg = new Config();
+		
+		// load properties
+		String propsPath = System.getProperty("dreamaas.properties");
+		InputStream propstream = null;
+		if (propsPath == null) {
+			propstream = Config.class.getClassLoader().getResourceAsStream("config.properties");
+		} else {
+			try {
+				propstream = new FileInputStream(propsPath);
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException("Unable to read properties file");
+			}
+		}
+
+		Properties props = new Properties();
+		try {
+			props.load(propstream);
+		} catch (IOException e) {
+			logger.severe("Unable to read properties file");
+		}
+		
+		for (Entry<Object, Object> prop : props.entrySet()) {
+			cfg.properties.put((String)prop.getKey(), (String)prop.getValue());
+		}
+		
+		// add system properties to the properties list as well (have precedence)
+		for (Entry<Object, Object> prop : System.getProperties().entrySet()) {
+			cfg.properties.put((String)prop.getKey(), (String)prop.getValue());
+		}
+		
+		// load the workers config file
+		String path = cfg.getProperty("dreamaas.configfile", "config.yaml");
 		logger.info("Loading configuration file " + path);
 		
 		File file = new File(path);
@@ -65,13 +104,13 @@ public class Config {
 			throw new IllegalStateException("Unable to load config yaml file.");
 		}
 
-		Config cfg = new Config();
 		cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
 		cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
 		cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
-		
+
 		return cfg;
 	}
+	
 	
 	public static Config getConfig() {
 		if (config == null) {
@@ -79,6 +118,10 @@ public class Config {
 		}
 
 		return config;
+	}
+	
+	public static Config cfg() {
+		return getConfig();
 	}
 	
 	/**
@@ -120,6 +163,49 @@ public class Config {
 		return scheduler;
 	}
 
+	/**
+	 * Get a property by the given name
+	 * 
+	 * @param name The name of the property
+	 * @return The requested property or null if not found
+	 */
+	public String getProperty(String name) {
+		return this.getProperty(name, null);
+	}
+	
+	/**
+	 * Get a property with the given name
+	 * 
+	 * @param name The name of the property
+	 * @param default_value The value if the property is not found
+	 * @return The requested property
+	 */
+	public String getProperty(String name, String default_value) {
+		if (this.properties.containsKey(name)) {
+			return this.properties.get(name);
+		}
+		return default_value;
+	}
+	
+	public boolean getProperty(String name, boolean default_value) {
+		String value = getProperty(name);
+		
+		if (value == null) {
+			return default_value;
+		}
+		
+		return Boolean.parseBoolean(value);
+	}
+	
+	public int getProperty(String name, int default_value) {
+		String value = getProperty(name);
+		
+		if (value == null) {
+			return default_value;
+		}
+		
+		return Integer.parseInt(value);
+	}
 	
 	/**
 	 * Get the workflow with the given name.

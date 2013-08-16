@@ -19,9 +19,12 @@
 
 package drm.taskworker;
 
+import static drm.taskworker.config.Config.cfg;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 import drm.taskworker.rest.RestServer;
 
@@ -31,7 +34,8 @@ import drm.taskworker.rest.RestServer;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class App {
-
+	private static Logger logger = Logger.getLogger(App.class.getCanonicalName());
+		
 	/**
 	 * @param args
 	 * @throws IOException 
@@ -43,17 +47,51 @@ public class App {
 			LogManager.getLogManager().readConfiguration(logging_config);
 		}
 		
-		WorkerRegistration wr = new WorkerRegistration();
-		wr.start();
+		// ensure that the connection with cassandra is functioning
+		Entities.cs();
 		
-		new RestServer().start();
+		// start components
+		if (cfg().getProperty("dreamaas.workers", true)) {
+			WorkerRegistration wr = new WorkerRegistration();
+			wr.start();
+		}
+		
+		if (cfg().getProperty("dreamaas.scheduler", false)) {
+			logger.info("Starting scheduler");
+			
+			//scheduler means master server
+			cfg().getScheduler().create();
+
+			// start a thread to manage the queue service
+			Thread thread = new Thread(new Runnable() {
+						@Override
+						public void run() {
+							while (true) {
+								Service.get().startJobs();
+								try {
+									Thread.sleep(cfg().getProperty("dreamaas.scheduler.interval", 2) * 1000);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					});
+			
+			thread.setDaemon(true);
+			thread.start();
+		}
+		
+		RestServer server = null;
+		if (cfg().getProperty("dreamaas.rest", false)) {
+			server = new RestServer();
+			server.start();
+		}
 
 		// wait forever
 		while(true) {
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(10000);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
 		}
 	}

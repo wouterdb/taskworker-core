@@ -1,0 +1,13 @@
+[Unit]
+Description=The server of the taskworker middleware platform
+After=syslog.target
+
+[Service]
+User=nobody
+Group=nobody
+Type=simple
+ExecStart=/usr/bin/taskworker-server
+
+[Install]
+WantedBy=multi-user.target
+

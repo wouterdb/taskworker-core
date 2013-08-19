@@ -23,6 +23,7 @@ import java.util.List;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -43,9 +44,24 @@ public class Jobs {
         JsonArrayBuilder builder = Json.createArrayBuilder();
         
         for (Job job : jobs) {
-        	builder.add(job.getJobId().toString());
+    		JsonObjectBuilder jobBuilder = Json.createObjectBuilder()
+            		.add("id", job.getJobId().toString())
+                    .add("workflow", job.getWorkflowName())
+                    .add("start_after", job.getStartAfter() / 1000)
+                    .add("finish_before", job.getFinishBefore() / 1000)
+                    .add("started", job.isStarted())
+                    .add("finished", job.isFinished())
+                    .add("failed", job.isFailed());
+            
+            if (job.isStarted()) {
+            	jobBuilder.add("started_at", job.getStartAt().getTime() / 1000);
+            }
+            if (job.isFinished()) {
+            	jobBuilder.add("finished_at", job.getFinishedAt().getTime() / 1000);
+            }
+        	builder.add(jobBuilder);
         }
-                
+        
         return builder.build().toString();
     }
 }

@@ -43,7 +43,6 @@ public class NewJob {
     		@FormParam("start_after") String start_after,
     		@FormParam("finish_before") String finish_before,
     		@FormParam("arg0") String arg0) {
-    	System.out.println(workflowName);
 		// get the delay
 		int after = Integer.valueOf(start_after);
 		int before = Integer.valueOf(finish_before);

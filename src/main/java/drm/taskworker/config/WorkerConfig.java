@@ -19,11 +19,17 @@
 
 package drm.taskworker.config;
 
+import static drm.taskworker.config.Config.cfg;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -37,9 +43,31 @@ public class WorkerConfig {
 	private int threads = 1;
 	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
+	private URLClassLoader urlLoader = null;
+	
 	public WorkerConfig(String workerName, String workerClass) {
 		this.workerClass = workerClass;
 		this.workerName = workerName;
+		
+	}
+	
+	private URLClassLoader getLoader() {
+		if (urlLoader == null) {
+			String codePath = cfg().getProperty("dreamaas.workers.code", "");
+			String[] parts = codePath.split("[,]");
+			URL[] urls = new URL[parts.length];
+			
+			for (int i = 0; i <  parts.length; i++) {
+				try {
+					urls[i] = new URL(parts[i]);
+				} catch (MalformedURLException e) {
+					logger.log(Level.SEVERE, "Bad url for worker code path", e);
+				}
+			}
+			this.urlLoader = new URLClassLoader(urls, drm.taskworker.Worker.class.getClassLoader());
+		}
+		
+		return this.urlLoader;
 	}
 	
 	/**
@@ -75,7 +103,8 @@ public class WorkerConfig {
 	@SuppressWarnings("unchecked")
 	public drm.taskworker.Worker getWorkerInstance() {
 		try {
-			Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)Class.forName(this.getWorkerClass());
+			Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)getLoader().loadClass(this.getWorkerClass());
+			//Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)Class.forName(this.getWorkerClass());
 			Constructor<drm.taskworker.Worker> workerCtor = workerCls.getConstructor(String.class);
 			return workerCtor.newInstance(this.getWorkerName());
 		} catch (ClassNotFoundException e) {

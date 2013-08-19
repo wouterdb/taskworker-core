@@ -1,0 +1,108 @@
+#!/usr/bin/python
+
+from __future__ import print_function
+
+import httplib, sys, datetime, urllib, socket, json
+from argparse import ArgumentParser
+from prettytable import PrettyTable
+
+
+def main():
+    parser = ArgumentParser()
+    
+    parser.add_argument("-H", "--host", dest="host", help="The host to connect to", default="localhost")
+    parser.add_argument("-p", "--port", dest="port", help="The port to connect to", default="8123")
+    
+    subparsers = parser.add_subparsers(title='commands', help='Commands available to interface with the taskworker server')
+    
+    parser_new = subparsers.add_parser('newjob', help="Submit a new job")
+    parser_new.add_argument("-w", dest="workflow",
+                help='The workflow to start the job in')
+    parser_new.add_argument("-s", dest="start_after",
+                help="Start the job after this date in format YYYY-MM-DD:HH:MM:SS")
+    parser_new.add_argument("-f", dest="finish_before",
+                help="Finish the job before this data in format YYYY-MM-DD:HH:MM:SS")
+    parser_new.add_argument("-d", dest="data",
+                help="The file with data to submit to the first task")
+    parser_new.set_defaults(func=new_job)
+    
+    parser_wfs = subparsers.add_parser("jobs", help="Retrieve a list of jobs")
+    parser_wfs.set_defaults(func=jobs)
+    
+    options, other = parser.parse_known_args()
+    
+    options.func(options)
+    
+def call(options, method, url, headers = {}, body = None):
+        # do the request
+    try:
+        conn = httplib.HTTPConnection(options.host, options.port)
+        conn.request(method, url, body = body, headers = headers)
+        
+        r1 = conn.getresponse()
+        return r1.read()
+    except socket.error:
+        print("Unable to connect to job server")
+        
+    return None
+
+#[{u'finish_before': 0, u'workflow': u'invoices', u'started': True, u'failed': False, u'finished': False, u'start_after': 1376569, u'started_at': 1376570902, u'id': u'85d44500-c37f-4519-82c6-f97604054b23'}]
+
+def job_to_state(job):
+    if job["failed"]:
+        return "Failed"
+    
+    if job["started"]:
+    
+        if job["finished"]:
+            return "Done"
+        
+        else:
+            return "Running"
+        
+    else:
+        return "Scheduled"
+    
+    return "/"
+    
+def jobs(options):
+    data = json.loads(call(options, "GET", "/jobs"))
+    
+    x = PrettyTable(["Job ID", "Workflow", "State"])
+    #x.align["City name"] = "l" # Left align city names
+    #x.padding_width = 1 # One space between column edges and contents (default)
+    
+    for d in data:
+        x.add_row([d["id"], d["workflow"], job_to_state(d)])
+    
+    print(x)
+
+def new_job(options):
+    if options.start_after:
+        options.start_after = datetime.datetime.strptime(options.start_after, "%Y-%m-%d:%H:%M:%S")
+    else:
+        options.start_after = datetime.datetime.now()
+        
+    if options.finish_before:
+        options.finish_before = datetime.datetime.strptime(options.finish_before, "%Y-%m-%d:%H:%M:%S")
+    else:
+        options.finish_before = datetime.datetime(1970,01,01,1,0)
+        
+    if options.workflow is None:
+        print("A workflow is required")
+        sys.exit(1)
+    
+    # load the data
+    data = ""
+    with open(options.data, "r") as fd:
+        data = fd.read()
+    
+    params = urllib.urlencode({'start_after': options.start_after.strftime("%s"), 
+                               'finish_before': options.finish_before.strftime("%s"), 
+                               'arg0': data})
+    
+    call(options, "POST", "/newjob/" + options.workflow, {
+            "Content-Type" : "application/x-www-form-urlencoded"}, params)
+        
+if __name__ == "__main__":
+    main()

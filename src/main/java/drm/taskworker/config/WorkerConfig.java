@@ -19,11 +19,9 @@
 
 package drm.taskworker.config;
 
-import static drm.taskworker.config.Config.cfg;
-
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
@@ -31,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static drm.taskworker.config.Config.cfg;
 
 /**
  * The configuration of a worker.
@@ -44,26 +44,25 @@ public class WorkerConfig {
 	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
 	private URLClassLoader urlLoader = null;
+	private String code = null;
 	
-	public WorkerConfig(String workerName, String workerClass) {
+	public WorkerConfig(String workerName, String workerClass, String code) {
 		this.workerClass = workerClass;
 		this.workerName = workerName;
-		
+		this.code = code;
 	}
 	
 	private URLClassLoader getLoader() {
 		if (urlLoader == null) {
-			String codePath = cfg().getProperty("dreamaas.workers.code", "");
-			String[] parts = codePath.split("[,]");
-			URL[] urls = new URL[parts.length];
+			URL[] urls = new URL[1];
 			
-			for (int i = 0; i <  parts.length; i++) {
-				try {
-					urls[i] = new URL(parts[i]);
-				} catch (MalformedURLException e) {
-					logger.log(Level.SEVERE, "Bad url for worker code path", e);
-				}
+			try {
+				URL url = new URL(this.code.replace("${cwd}", cfg().getProperty("user.dir")));
+				urls[0] = url;
+			} catch(IOException e) {
+				logger.log(Level.SEVERE, "Bad url for worker code path", e);
 			}
+				
 			this.urlLoader = new URLClassLoader(urls, drm.taskworker.Worker.class.getClassLoader());
 		}
 		
@@ -94,6 +93,7 @@ public class WorkerConfig {
 	public void setWorkerClass(String workerClass) {
 		this.workerClass = workerClass;
 	}
+	
 	
 	/**
 	 * Get an instance of the given worker
@@ -132,11 +132,11 @@ public class WorkerConfig {
 	public static Map<String,WorkerConfig> parseWorkers(@SuppressWarnings("rawtypes") List<Map> workers) {
 		Map<String,WorkerConfig> results = new HashMap<String, WorkerConfig>();
 		for (Map<String,Object> map : workers) {
-			if (!map.containsKey("name") || ! map.containsKey("class")) {
-				throw new IllegalArgumentException("Each worker should have name and class attributes set in the config file.");
+			if (!map.containsKey("name") || !map.containsKey("class") || !map.containsKey("code")) {
+				throw new IllegalArgumentException("Each worker should have name, class and code attributes set in the config file.");
 			}
 			
-			WorkerConfig obj = new WorkerConfig((String)map.get("name"), (String)map.get("class"));
+			WorkerConfig obj = new WorkerConfig((String)map.get("name"), (String)map.get("class"), (String)map.get("code"));
 			obj.setThreads(Integer.valueOf((Integer)map.get("threads")));
 			
 			results.put((String)map.get("name"), obj);

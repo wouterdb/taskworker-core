@@ -48,14 +48,15 @@ public class WorkerRegistration {
 	}
 
 	public void start() {
-		for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
-			logger.info("Starting " + worker.getWorkerName() + " thread");
-			for (int i = 0; i < worker.getThreads(); i++) {
-				Worker w = worker.getWorkerInstance();
-				this.addWorker(w);
+		if (config.getWorkers() != null) {		
+			for (drm.taskworker.config.WorkerConfig worker : config.getWorkers().values()) {
+				logger.info("Starting " + worker.getWorkerName() + " thread");
+				for (int i = 0; i < worker.getThreads(); i++) {
+					Worker w = worker.getWorkerInstance();
+					this.addWorker(w);
+				}
 			}
 		}
-
 	}
 
 	/**

@@ -38,6 +38,8 @@ public class Statistic {
 		this.sdtDev = sdtDev;
 		this.samples = samples;
 	}
+	
+	private Statistic() {}
 
 	public Statistic(String name, List<Statistic> children) {
 		super();

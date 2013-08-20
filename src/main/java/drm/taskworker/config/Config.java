@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.yaml.snakeyaml.Yaml;
@@ -97,20 +98,18 @@ public class Config {
 		File file = new File(path);
 		if (!file.canRead()) {
 			System.err.println(path + " is not readable.");
-			System.exit(1);
+		} else {
+			Yaml yaml = new Yaml();
+			Map data;
+			try {
+				data = (Map) yaml.load(new FileInputStream(file));
+				cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
+				cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
+				cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
+			} catch (FileNotFoundException e) {
+				logger.log(Level.SEVERE, "Unable to load config yaml file.");
+			}
 		}
-		
-		Yaml yaml = new Yaml();
-		Map data;
-		try {
-			data = (Map) yaml.load(new FileInputStream(file));
-		} catch (FileNotFoundException e) {
-			throw new IllegalStateException("Unable to load config yaml file.");
-		}
-
-		cfg.setWorkers(WorkerConfig.parseWorkers((List) data.get("workers")));
-		cfg.setWorkflows(WorkflowConfig.parseWorkflows((Map) data.get("workflows")));
-		cfg.setScheduler(SchedulerConfig.parseScheduler((Map) data.get("scheduler")));
 
 		return cfg;
 	}

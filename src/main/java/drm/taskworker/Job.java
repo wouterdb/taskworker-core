@@ -439,10 +439,13 @@ public class Job {
 
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-					.withCql("UPDATE job SET stats = ? WHERE job_id = ?;")
+					.withCql("UPDATE job SET stats = ? WHERE job_id = ? AND start_after = ? AND finish_before = ?")
 					.asPreparedStatement()
 					.withByteBufferValue(out, Entities.STATS_SERIALISER)
-					.withUUIDValue(getJobId()).execute();
+					.withUUIDValue(getJobId())
+					.withLongValue(this.startAfter)
+					.withLongValue(this.finishBefore)
+					.execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
 		}

@@ -56,7 +56,7 @@ public class App {
 			wr.start();
 		}
 		
-		if (cfg().getProperty("taskworker.scheduler", false)) {
+		if (cfg().getProperty("taskworker.scheduler", false) && cfg().getScheduler() != null) {
 			logger.info("Starting scheduler");
 			
 			//scheduler means master server

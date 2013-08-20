@@ -26,8 +26,11 @@ def main():
                 help="The file with data to submit to the first task")
     parser_new.set_defaults(func=new_job)
     
-    parser_wfs = subparsers.add_parser("jobs", help="Retrieve a list of jobs")
-    parser_wfs.set_defaults(func=jobs)
+    parser_jobs = subparsers.add_parser("jobs", help="Retrieve a list of jobs")
+    parser_jobs.set_defaults(func=jobs)
+
+    parser_wfs = subparsers.add_parser("workflows", help="Retrieve the list of available workflows")
+    parser_wfs.set_defaults(func=workflows)
     
     options, other = parser.parse_known_args()
     
@@ -76,6 +79,11 @@ def jobs(options):
         x.add_row([d["id"], d["workflow"], job_to_state(d)])
     
     print(x)
+
+def workflows(options):
+    data = json.loads(call(options, "GET", "/workflows"))
+
+    print("Available workflows: " + ", ".join(data))
 
 def new_job(options):
     if options.start_after:

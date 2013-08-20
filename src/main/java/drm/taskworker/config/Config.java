@@ -53,38 +53,42 @@ public class Config {
 	private Config() {
 	}
 	
+	private void loadProperties(Properties props) {
+		for (Entry<Object, Object> prop : props.entrySet()) {
+			this.properties.put((String)prop.getKey(), (String)prop.getValue());
+		}
+	}
+	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static Config loadConfig() {
 		Config cfg = new Config();
 		
-		// load properties
-		String propsPath = System.getProperty("dreamaas.properties");
-		InputStream propstream = null;
-		if (propsPath == null) {
-			propstream = Config.class.getClassLoader().getResourceAsStream("config.properties");
-		} else {
-			try {
-				propstream = new FileInputStream(propsPath);
-			} catch (FileNotFoundException e) {
-				throw new IllegalStateException("Unable to read properties file");
-			}
-		}
-
-		Properties props = new Properties();
+		// load (default) properties
 		try {
-			props.load(propstream);
+			InputStream propstream = Config.class.getClassLoader().getResourceAsStream("config.properties");
+			Properties defaultProps = new Properties();
+			defaultProps.load(propstream);
+			cfg.loadProperties(defaultProps);
 		} catch (IOException e) {
-			logger.severe("Unable to read properties file");
+			logger.severe("Unable to read properties file in jar");
 		}
 		
-		for (Entry<Object, Object> prop : props.entrySet()) {
-			cfg.properties.put((String)prop.getKey(), (String)prop.getValue());
+		// load props from config file (if exists)
+		try {
+			String propsPath = System.getProperty("dreamaas.properties", null);
+			
+			if (propsPath == null) {
+				InputStream propstream = new FileInputStream(propsPath);
+				Properties props = new Properties();
+				props.load(propstream);
+				cfg.loadProperties(props);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to read properties file");
 		}
 		
 		// add system properties to the properties list as well (have precedence)
-		for (Entry<Object, Object> prop : System.getProperties().entrySet()) {
-			cfg.properties.put((String)prop.getKey(), (String)prop.getValue());
-		}
+		cfg.loadProperties(System.getProperties());
 		
 		// load the workers config file
 		String path = cfg.getProperty("dreamaas.configfile", "config.yaml");

@@ -55,7 +55,7 @@ public class Queue {
 
 	private Keyspace cs;
 	private Map<String, ColumnPrefixDistributedRowLock<String>> locks = new HashMap<>();
-	private Map<String, Object> localLocks = new HashMap<>(); 
+	private Map<String, Object> localLocks = new HashMap<>(); // TODO remove stale entries
 	
 	public Queue(String queueName) {
 		cs = Entities.cs();

@@ -55,7 +55,8 @@ public class Queue {
 
 	private Keyspace cs;
 	private Map<String, ColumnPrefixDistributedRowLock<String>> locks = new HashMap<>();
-
+	private Map<String, Object> localLocks = new HashMap<>(); 
+	
 	public Queue(String queueName) {
 		cs = Entities.cs();
 	}
@@ -121,37 +122,48 @@ public class Queue {
 	 *            How many task are to be leased
 	 * @param taskType
 	 *            The type of task (the name / type of the worker)
-	 * @param workflowId
+	 * @param jobId
 	 *            The workflow the task belongs to
 	 * @return A list of taskhandles 
 	 * @throws ConnectionException
 	 */
-	public synchronized List<TaskHandle> leaseTasks(long lease,
-			TimeUnit unit, int limit, String taskType, UUID workflowId)
+	public List<TaskHandle> leaseTasks(long lease,
+			TimeUnit unit, int limit, String taskType, UUID jobId)
 			throws ConnectionException {
 		
-		if (workflowId == null) {
+		if (jobId == null) {
 			return new LinkedList<>();
 		}
 		
 		List<TaskHandle> handles = null;
 		
 		boolean distributed = Boolean.parseBoolean(Config.getConfig().getProperty("taskworker.distributed"));
+		String lockKey = this.lockName(taskType, jobId);
+		Object lockObject = null;
 		
-		// get a lock if distributed is true
-		if (distributed && !this.lock(taskType, workflowId)) {
-			logger.warning("Unable to aquire a lock on " + workflowId.toString() + " - " + taskType);
-			return handles;
+		if (!this.localLocks.containsKey(lockKey)) {
+			lockObject = new Object();
+			this.localLocks.put(lockKey, lockObject);
+		} else {
+			lockObject = this.localLocks.get(lockKey);
 		}
 
-		Context tc = Metrics.timer("queue.lease").time();
-		handles = leaseWithNoLock(lease, unit, limit, taskType, workflowId);
-		tc.stop();
-
-		// release the lock if distributed true
-		if (distributed && !this.release(taskType, workflowId)) {
-			logger.warning("Unable to release lock on " + workflowId.toString() + " - " + taskType);
-			return null;
+		synchronized (lockObject) { // first do a local lock, because the class is shared between all threads
+			// get a lock if distributed is true
+			if (distributed && !this.lock(taskType, jobId)) {
+				logger.warning("Unable to aquire a lock on " + jobId.toString() + " - " + taskType);
+				return handles;
+			}
+	
+			Context tc = Metrics.timer("queue.lease").time();
+			handles = leaseWithNoLock(lease, unit, limit, taskType, jobId);
+			tc.stop();
+	
+			// release the lock if distributed true
+			if (distributed && !this.release(taskType, jobId)) {
+				logger.warning("Unable to release lock on " + jobId.toString() + " - " + taskType);
+				return null;
+			}
 		}
 
 		return handles;
@@ -160,7 +172,8 @@ public class Queue {
 	private boolean handleExpiredLease(TaskHandle task) throws ConnectionException{
 		// check if the task has a timing entry which also marks a task as
 		// finished. If so, ignore the task and try to do yet an other delete.
-		PreparedCqlQuery<String, String> findTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+		PreparedCqlQuery<String, String> findTask = cs.prepareQuery(Entities.CF_STANDARD1)
+				.setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
 				.withCql("SELECT * FROM task_timing WHERE id = ?")
 				.asPreparedStatement();
 		
@@ -171,7 +184,8 @@ public class Queue {
 		
 		if (rows.size() > 0) {
 			// the task did finish, try to mark it as removed once again
-			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
+			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1)
+					.setConsistencyLevel(ConsistencyLevel.CL_ALL)
 					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
 					.asPreparedStatement();
 			
@@ -211,7 +225,8 @@ public class Queue {
 		long now = System.currentTimeMillis();
 		
 		// try to dequeue a task (type = 0 and lease = false)
-		PreparedCqlQuery<String, String> findTasks = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
+		PreparedCqlQuery<String, String> findTasks = cs.prepareQuery(Entities.CF_STANDARD1)
+				.setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
 				.withCql("SELECT * FROM task_queue WHERE queue_id = ?")
 				.asPreparedStatement();
 		

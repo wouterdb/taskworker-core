@@ -1,62 +1,82 @@
-DREAMaaS Middleware SDK
+# DREAMaaS Middleware SDK
 
 This SDK allows experimenting with the DREAMaaS API on a cluster.
 
-1.Setup
----------------
+## 1.Setup
 
-we assume a linux machine
-prerequisites: Java 7, git, maven3 (For Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3. The command will be then 'mvn3' instead of 'mvn'.)
+We assume a linux machine with a recent distribution.
 
-1.1.Installing Cassandra 1.2
-----------------------------
+Prerequisites: Java 7, git, maven3 (For Ubuntu, see https://launchpad.net/~natecarlson/+archive/maven3. The command will be then 'mvn3' instead of 'mvn'.)
+
+### 1.1. Installing Cassandra 1.2
 
 We use the datastax packages for cassandra.
 For instructions, see http://www.datastax.com/docs/1.2/install/index
 For red-hat like systems, as root, do
 
-    cat > /etc/yum.repos.d/datastax.repo <<EOF
-    [datastax]
-    name= DataStax Repo for Apache Cassandra
-    baseurl=http://rpm.datastax.com/community
-    enabled=1
-    gpgcheck=0
-    EOF
+```bash
+cat > /etc/yum.repos.d/datastax.repo <<EOF
+[datastax]
+name= DataStax Repo for Apache Cassandra
+baseurl=http://rpm.datastax.com/community
+enabled=1
+gpgcheck=0
+EOF
 
-    yum install cassandra12
-    systemctl start cassandra.service
+yum install cassandra12
+systemctl start cassandra.service
+```
 
 to make sure cassandra start at boot
 
-    systemctl enable cassandra.service
+```bash
+systemctl enable cassandra.service
+```
 
 to see if it runs correctly
 
-    systemctl status cassandra.service
+```bash
+systemctl status cassandra.service
+```
 
 The distributed version requires a cluster of at least three Cassandra servers
 
 
-1.2.Getting the DREAMaaS SDK
----------------------
+### 1.2. Installing the DREAMaaS SDK
 
-The sdk and examples can be cloned from github (https://github.com/dreamaas)
+The sdk can be cloned from github (https://github.com/dreamaas). The repository
+is called taskworker-core. Checking out the repository and compiling the code can 
+be done with the following commands:
 
-more specific, 
+```bash
+git clone git://github.com/dreamaas/taskworker-core.git
+cd taskworker-core
+mvn clean install
+```
 
-    git clone git://github.com/dreamaas/taskworker-core.git
-    pushd taskworker-core
-    mvn clean install
-    popd
-    git clone git://github.com/dreamaas/taskworker-examples.git
-    pushd taskworker-examples
-    mvn clean install
-    popd
+This generates a jar in the target directory with all dependencies included. 
 
-This generates two artifacts:
-    - a jar that contains the platform and the workers that can be started from
-      the commandline.
-    - a war that contains the example servlets that needs to be installed in a tomcat
+The mvn install command also installs the generated artifacts in your local
+repository.
+
+In target a tar.bz2 file of the project is created, in conjunction with the 
+spec file in the root, an rpm file can be created for recent fedora versions:
+
+```bash
+cp target/taskworker-core.tar.bz2 ~/rpmbuild/SOURCES/
+rpmbuild -bb taskworker-core.spec
+```
+    
+For a manual install:
+
+*   Copy the generated jar to /usr/share/java
+    > cp target/taskworker-core.jar /usr/share/java
+    
+*   Copy the two executable scripts to /usr/bin or /usr/local/bin
+    > cp bin/taskworker-server bin/taskworker-client /usr/bin
+    
+*   Create the configuration directory
+    > mkdir /etc/taskworker
 
 1.3 Executing the examples
 --------------------------
@@ -86,6 +106,7 @@ which is currently included in the war file. For example:
 
 2.Rolling your own
 ------------------
+
 A dreamaas project consists out of
 
 1- workers
@@ -118,24 +139,7 @@ The workflow section defines new workflows. Each worklow has the following struc
 
 additionally, a section step can be used to map abstract task names to actual task names. 
 
-The third section initialises a scheduler. It requires at least a class argument. All other arguments are passed on to the scheduler itself. 
+The third section initializes a scheduler. It requires at least a class argument. All other arguments are passed on to the scheduler itself. 
 
-2.3. Making it work
--------------------
-To create a new project, do
 
-    mvn -e archetype:generate -DarchetypeGroupId=taskworker -DarchetypeArtifactId=worker-archetype -DarchetypeVersion=1.0-SNAPSHOT -DarchetypeRepository=https://distrinet.cs.kuleuven.be/software/DREAMaaS/maven/  -DgroupId=[groud ID] -DartifactId=[project ID]
-
-This will set up a skeleton project.
-The project can be built with
-
-    mvn package
-
-To import the project into eclipse use File -> Import -> Existing Maven Project
-(If this option  doesn't exist, install the m2e eclipse plugin (help -> eclipse marketplace -> find -> maven integration for eclipse)) 
-
-3. Remarks
------------
-
-For remarks, please use the issue tracker
 

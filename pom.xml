@@ -163,23 +163,40 @@
 
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>drm.taskworker.App</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
                 <executions>
                     <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <id>make-assembly-jar</id> <!-- this is used for inheritance merges -->
                         <phase>package</phase> <!-- bind to the packaging phase -->
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>taskworker-core</finalName>
+		                    <archive>
+		                        <manifest>
+		                            <mainClass>drm.taskworker.App</mainClass>
+		                        </manifest>
+		                    </archive>
+		                    <descriptorRefs>
+		                        <descriptorRef>jar-with-dependencies</descriptorRef>
+		                    </descriptorRefs>
+		                </configuration>
+                    </execution>
+                    
+                    <execution>
+                        <id>make-assembly-project</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>taskworker-core</finalName>
+                            <descriptorRefs>
+                                <descriptorRef>project</descriptorRef>
+                            </descriptorRefs>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -195,13 +212,6 @@
 						<exclude>localRepo/**</exclude>
 					</excludes>
 				</configuration>
-				<!-- <executions>
-					<execution>
-						<goals>
-							<goal>check</goal>
-						</goals>
-					</execution>
-				</executions> -->
 			</plugin>
 
             <plugin>

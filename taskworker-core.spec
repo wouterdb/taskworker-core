@@ -24,7 +24,7 @@ mvn package
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/share/java
-install -p -m 644 target/core-%{version}-SNAPSHOT-jar-with-dependencies.jar $RPM_BUILD_ROOT/usr/share/java/taskworker-core.jar
+install -p -m 644 target/tasworker-core.jar $RPM_BUILD_ROOT/usr/share/java/taskworker-core.jar
 mkdir -p $RPM_BUILD_ROOT/usr/bin
 install -p -m 755 bin/taskworker-client $RPM_BUILD_ROOT/usr/bin
 install -p -m 755 bin/taskworker-server $RPM_BUILD_ROOT/usr/bin

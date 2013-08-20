@@ -61,21 +61,21 @@ public class Metrics {
 			registery.register("jvm.memory",
 					new MemoryUsageGaugeSet(ManagementFactory.getMemoryMXBean(), Collections.<MemoryPoolMXBean> emptyList()));
 
-			if (cfg().getProperty("dreamaas.metrics.console", false)) {
-				ConsoleReporter.forRegistry(registery).build().start(cfg().getProperty("dreamaas.metrics.console.interval", 30), TimeUnit.SECONDS);
+			if (cfg().getProperty("taskworker.metrics.console", false)) {
+				ConsoleReporter.forRegistry(registery).build().start(cfg().getProperty("taskworker.metrics.console.interval", 30), TimeUnit.SECONDS);
 			}
 			
-			if (cfg().getProperty("dreamaas.metrics.graphite", false)) {
+			if (cfg().getProperty("taskworker.metrics.graphite", false)) {
 				final Graphite graphite = new Graphite(new InetSocketAddress(
-						cfg().getProperty("dreamaas.metrics.graphite.host", "localhost"), 
-						Integer.parseInt(cfg().getProperty("dreamaas.metrics.graphite.port", "2003"))));
+						cfg().getProperty("taskworker.metrics.graphite.host", "localhost"), 
+						Integer.parseInt(cfg().getProperty("taskworker.metrics.graphite.port", "2003"))));
 				
 				final GraphiteReporter reporter = GraphiteReporter
-						.forRegistry(registery).prefixedWith(cfg().getProperty("dreamaas.metrics.graphite.prefix", "localhost"))
+						.forRegistry(registery).prefixedWith(cfg().getProperty("taskworker.metrics.graphite.prefix", "localhost"))
 						.convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS)
 						.filter(MetricFilter.ALL).build(graphite);
 				
-				reporter.start(cfg().getProperty("dreamaas.metrics.graphite.interval", 30), TimeUnit.SECONDS);
+				reporter.start(cfg().getProperty("taskworker.metrics.graphite.interval", 30), TimeUnit.SECONDS);
 				logger.info("Started metrics graphite reporter");
 			}
 		} catch (RuntimeException e) {

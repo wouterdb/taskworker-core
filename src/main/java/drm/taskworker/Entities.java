@@ -82,7 +82,7 @@ public class Entities {
 	}
 
 	private static synchronized Keyspace setupCassandra() {
-		String seed = System.getProperty("dreamaas.cassandra.seed");
+		String seed = System.getProperty("taskworker.cassandra.seed");
 		if (seed == null || seed.isEmpty()) {
 			seed = "127.0.0.1";
 		}

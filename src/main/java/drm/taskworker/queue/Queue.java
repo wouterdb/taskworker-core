@@ -136,7 +136,7 @@ public class Queue {
 		
 		List<TaskHandle> handles = null;
 		
-		boolean distributed = Boolean.parseBoolean(Config.getConfig().getProperty("dreamaas.distributed"));
+		boolean distributed = Boolean.parseBoolean(Config.getConfig().getProperty("taskworker.distributed"));
 		
 		// get a lock if distributed is true
 		if (distributed && !this.lock(taskType, workflowId)) {

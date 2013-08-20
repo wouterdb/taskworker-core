@@ -75,7 +75,7 @@ public class Config {
 		
 		// load props from config file (if exists)
 		try {
-			String propsPath = System.getProperty("dreamaas.properties", null);
+			String propsPath = System.getProperty("taskworker.properties", null);
 			
 			if (propsPath == null) {
 				InputStream propstream = new FileInputStream(propsPath);
@@ -91,7 +91,7 @@ public class Config {
 		cfg.loadProperties(System.getProperties());
 		
 		// load the workers config file
-		String path = cfg.getProperty("dreamaas.configfile", "config.yaml");
+		String path = cfg.getProperty("taskworker.configfile", "config.yaml");
 		logger.info("Loading configuration file " + path);
 		
 		File file = new File(path);

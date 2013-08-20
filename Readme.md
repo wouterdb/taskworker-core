@@ -77,69 +77,36 @@ For a manual install:
     
 *   Create the configuration directory
     > mkdir /etc/taskworker
+    
+*   Properties can be overridden by defining them in /etc/taskworker/config.properties
 
-1.3 Executing the examples
---------------------------
+Note: In the taskworker-server script the location of the properties file
+and the jar can be changed.
 
-Section 1.2 generates two artifacts (jar and war) which are required to setup a 
-working platform.
+### 1.3 Starting taskworker server and execute a workflow
 
-The war should be deployed as ROOT.war in a servlet container such as Tomcat. 
-This war contains a webinterface to submit jobs and inspect the results.
+The taskworker-workers repository contains the code for several workers and
+integration projects that generate jar with all the worker code and have a
+configuration file that defines the workers, the schedular config and the workflows.
 
-The jar contains the middleware platform and the code of the workers. On each
-worker server an instance of this jar should be started. It can be started like this:
+The /etc/taskworker/config.properties properties file should define the location
+of the workflow configuration file (yaml file format) in the property
+taskworker.configfile
 
-java -jar examples.jar workers.yaml
+The properties file determines which components of the server are started:
 
-With workers.yaml the configuration file (src/main/webapp/WEB-INF/workers.yaml
-in the examples project).
+*   workers: The workers defined and used the workflows
 
-In a distributed setting the workers need at least 3 cassandra instances. To start
-a single node development version add the -Ddreamaas.distributed=false parameter.
-With -Ddreamaas.cassandra.seed a list of seeds nodes can be given.
+*   scheduler: A scheduler that starts jobs by moving them onto the work queue.
+Only one scheduler per "cluster" must be started.
 
-The archive worker of the examples also requires the address of an archival services
-which is currently included in the war file. For example:
--Ddreamaas.archive.url=http://127.0.0.1:8080/download
+*   rest: A rest interface to submit jobs and track their progress.  
 
+By default the middleware starts a non-distributed version which uses local
+locking only. In a distributed setting the workers need at least 3 cassandra 
+instances to ensure quorum is achieved when a lock is requested. To start
+the distirbutedment version set taskworker.distributed property to true.
 
-2.Rolling your own
-------------------
-
-A dreamaas project consists out of
-
-1- workers
-
-2- configuration
-
-
-2.1. Workers
-------------
-Workers execute a particular type of Task.
-To implement a Worker, subclass drm.taskworker.Worker. When work is available for this worker, the work(Task) method is called.
-The Task argument contains the specifics of the work to be done. After all work for a particular Job is done, the work(EndTask) method is called. 
-Workers should not retain state between different invocations, as multiple instances of each worker may exist, on different machines. All state should be stored in the MemcacheService.
-
-When the work is done, a taskresult is returned. The worker can add new tasks to the taskresult, to order further work to be done. For each task, it must be indicated what kind of worker it requires. 
-To allow modular composition, the name given to each task is first looked up in the configuration file. If it is not found, the name is used directly. In the example code, all work sent out is of the type 'next'. In the configuration file, 'next' is translated to the actual work type. 
-
-
-2.2. Configuration
-------------------
-The config is expected in the file src/main/webapp/WEB-INF/workers.yaml 
-
-The yaml file has three sections: workers, worklows and scheduler. 
-The workers section creates instances of worker classes, binding each to a unique name
-The workflow section defines new workflows. Each worklow has the following structure
-
-    [name]:
-       start: [name of start task]
-       end: [name of end task]
-
-additionally, a section step can be used to map abstract task names to actual task names. 
-
-The third section initializes a scheduler. It requires at least a class argument. All other arguments are passed on to the scheduler itself. 
-
-
+The taskworker-client script is a Python script that uses the built-in REST
+interface to interact with the taskworker-server.
 

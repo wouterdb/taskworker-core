@@ -51,12 +51,12 @@ public class App {
 		Entities.cs();
 		
 		// start components
-		if (cfg().getProperty("dreamaas.workers", true)) {
+		if (cfg().getProperty("taskworker.workers", true)) {
 			WorkerRegistration wr = new WorkerRegistration();
 			wr.start();
 		}
 		
-		if (cfg().getProperty("dreamaas.scheduler", false)) {
+		if (cfg().getProperty("taskworker.scheduler", false)) {
 			logger.info("Starting scheduler");
 			
 			//scheduler means master server
@@ -69,7 +69,7 @@ public class App {
 							while (true) {
 								Service.get().startJobs();
 								try {
-									Thread.sleep(cfg().getProperty("dreamaas.scheduler.interval", 2) * 1000);
+									Thread.sleep(cfg().getProperty("taskworker.scheduler.interval", 2) * 1000);
 								} catch (InterruptedException e) {
 									e.printStackTrace();
 								}
@@ -82,7 +82,7 @@ public class App {
 		}
 		
 		RestServer server = null;
-		if (cfg().getProperty("dreamaas.rest", false)) {
+		if (cfg().getProperty("taskworker.rest", false)) {
 			server = new RestServer();
 			server.start();
 		}

@@ -77,7 +77,7 @@ public class Config {
 		try {
 			String propsPath = System.getProperty("taskworker.properties", null);
 			
-			if (propsPath == null) {
+			if (propsPath != null) {
 				InputStream propstream = new FileInputStream(propsPath);
 				Properties props = new Properties();
 				props.load(propstream);

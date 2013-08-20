@@ -19,6 +19,7 @@
 
 package drm.taskworker.config;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -29,8 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static drm.taskworker.config.Config.cfg;
 
 /**
  * The configuration of a worker.
@@ -54,16 +53,20 @@ public class WorkerConfig {
 	
 	private URLClassLoader getLoader() {
 		if (urlLoader == null) {
-			URL[] urls = new URL[1];
-			
 			try {
-				URL url = new URL(this.code.replace("${cwd}", cfg().getProperty("user.dir")));
-				urls[0] = url;
+				File jarFile = new File(this.code);
+				
+				if (!jarFile.isFile()) {
+					logger.log(Level.SEVERE, "Unable to locate jar " + jarFile);
+					return null;
+				}
+				
+				this.urlLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, 
+					drm.taskworker.Worker.class.getClassLoader());
 			} catch(IOException e) {
 				logger.log(Level.SEVERE, "Bad url for worker code path", e);
 			}
-				
-			this.urlLoader = new URLClassLoader(urls, drm.taskworker.Worker.class.getClassLoader());
+
 		}
 		
 		return this.urlLoader;

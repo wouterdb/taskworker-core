@@ -39,6 +39,7 @@ public class Statistic {
 		this.samples = samples;
 	}
 	
+	@SuppressWarnings("unused")
 	private Statistic() {}
 
 	public Statistic(String name, List<Statistic> children) {

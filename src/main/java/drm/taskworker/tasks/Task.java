@@ -21,11 +21,11 @@ package drm.taskworker.tasks;
 
 import static drm.taskworker.Entities.cs;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import java.util.UUID;
 
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -43,7 +43,7 @@ import drm.taskworker.Job;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class Task extends AbstractTask {
-	private Map<String, Object> params = new HashMap<>();
+	private Map<String, ValueRef> params = new HashMap<>();
 
 	/**
 	 * Create a task for a worker
@@ -87,23 +87,6 @@ public class Task extends AbstractTask {
 		super(job.getJobId(), null, worker);
 	}
 
-//	/**
-//	 * Create a task for a worker
-//	 * 
-//	 * @param parent
-//	 *            The parent of this task
-//	 * @param worker
-//	 *            The name of the worker
-//	 */
-//	protected Task(WorkflowInstance workflow, AbstractTask parent, String worker) {
-//		super(workflow, parent, worker);
-//	}
-//
-//
-//	public Task(AbstractTask one, List<UUID> parents, String worker) {
-//		super(one,parents,worker);
-//	}
-
 	/**
 	 * Add a parameter to the task
 	 * 
@@ -113,7 +96,9 @@ public class Task extends AbstractTask {
 	 *            The value of the parameter
 	 */
 	public void addParam(String name, Object value) {
-		this.params.put(name, value);
+		ValueRef ref = new ValueRef(this, name);
+		ref.setValue(value);
+		this.params.put(name, ref);
 	}
 
 	/**
@@ -121,29 +106,53 @@ public class Task extends AbstractTask {
 	 * 
 	 * @param name
 	 *            The name of the parameter
-	 * @return The value
+	 * @return The valuee
+	 * @throws ParameterFoundException 
 	 */
-	public Object getParam(String name) {
-		return this.params.get(name);
+	public Object getParam(String name) throws ParameterFoundException {
+		return getParamRef(name).getValue();
+	}
+	
+	/**
+	 * Get a value reference to the parameter
+	 */
+	public ValueRef getParamRef(String name) {
+		return new ValueRef(this, name);
 	}
 
 	/**
-	 * Check if a parameter exists
-	 * 
-	 * @param name
-	 * @return
+	 * Get a list of value references
 	 */
-	public boolean hasParam(String name) {
-		return this.params.containsKey(name);
-	}
+	public List<ValueRef> getParamRefs() {
+		List<ValueRef> refs = new ArrayList<>();
+		
+		try {
+			OperationResult<CqlResult<String, String>> result = cs()
+					.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT * FROM parameter WHERE job_id = ? AND task_id = ?")
+					.asPreparedStatement()
+					.withUUIDValue(this.getJobId())
+					.withUUIDValue(this.getId())
+					.execute();
 
-	/**
-	 * Get a set of parameter names.
-	 * 
-	 * @return A set of names
-	 */
-	public Set<String> getParamNames() {
-		return this.params.keySet();
+			for (Row<String, String> row : result.getResult().getRows()) {
+				ColumnList<String> columns = row.getColumns();
+
+				UUID jobId = columns.getUUIDValue("job_id", null);
+				UUID taskId = columns.getUUIDValue("task_id", null);
+				String name = columns.getStringValue("name", null);
+				Object value = ObjectSerializer.get().fromByteBuffer(columns.getByteBufferValue("value", null));
+
+				ValueRef ref = new ValueRef(jobId, taskId, name);
+				ref.setValue(value);
+				
+				refs.add(ref);
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		
+		return refs;
 	}
 
 	@Override
@@ -165,43 +174,9 @@ public class Task extends AbstractTask {
 	public void save() {
 		super.save();
 
-		try {
-			for (Entry<String, Object> param : params.entrySet()) {
-				cs().prepareQuery(Entities.CF_STANDARD1)
-						.withCql("INSERT INTO parameter (task_id, name, value) VALUES (?, ?, ?);")
-						.asPreparedStatement()
-						.withUUIDValue(this.getId())
-						.withStringValue(param.getKey())
-						.withByteBufferValue(param.getValue(),
-								ObjectSerializer.get()).execute();
-			}
-		} catch (ConnectionException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Load the parameters of this task from the database
-	 */
-	public void loadParameters() {
-		try {
-			OperationResult<CqlResult<String, String>> result = cs()
-					.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT * FROM parameter WHERE task_id = ?")
-					.asPreparedStatement().withUUIDValue(this.getId())
-					.execute();
-
-			for (Row<String, String> row : result.getResult().getRows()) {
-				ColumnList<String> columns = row.getColumns();
-
-				String name = columns.getStringValue("name", null);
-				Object value = ObjectSerializer.get().fromByteBuffer(
-						columns.getByteBufferValue("value", null));
-
-				this.addParam(name, value);
-			}
-		} catch (ConnectionException e) {
-			e.printStackTrace();
+		// save all value refs that have not been saved
+		for (ValueRef ref : params.values()) {
+			ref.save();
 		}
 	}
 
@@ -210,7 +185,5 @@ public class Task extends AbstractTask {
 		return String.format("Task [job=%s, id=%s, worker=%s, nparams=%d]",
 				getJobId(), getId(), getWorker(), params.size());
 	}
-
-	
 
 }

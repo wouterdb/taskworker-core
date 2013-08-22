@@ -112,7 +112,7 @@ public class Entities {
 				createKeyspace(ks);
 				
 				List<String> queries = new ArrayList<>();
-				queries.add("CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))");
+				queries.add("CREATE TABLE parameter (job_id uuid, task_id uuid, name text, value blob, PRIMARY KEY(job_id, task_id, name))");
 
 				/*
 				 * type:

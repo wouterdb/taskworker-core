@@ -303,11 +303,6 @@ public abstract class AbstractTask {
 		task.setJobId(columns.getUUIDValue("job_id", null));
 		task.worker = columns.getStringValue("worker_name", null);
 
-		
-		if (task.getTaskType() == 0) {
-			((Task)task).loadParameters(); 
-		}
-
 		return task;
 	}
 	

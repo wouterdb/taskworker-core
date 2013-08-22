@@ -44,8 +44,8 @@ import drm.taskworker.tasks.TaskResult.Result;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public abstract class Worker implements Runnable {
-	protected static final Logger logger = Logger.getLogger(Worker.class
-			.getCanonicalName());
+	protected static final Logger logger = 
+							Logger.getLogger(Worker.class.getCanonicalName());
 
 	private String name = null;
 
@@ -104,7 +104,7 @@ public abstract class Worker implements Runnable {
 	public void stopWorking() {
 		this.working = false;
 	}
-
+	
 	/**
 	 * The main loop that handles the tasks.
 	 */

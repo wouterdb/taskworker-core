@@ -1,5 +1,5 @@
 Name:           taskworker-core
-Version:        0.2.0
+Version:        0.3.0
 Release:        1%{?dist}
 Summary:        Taskworker middleware platform 
 
@@ -7,6 +7,7 @@ License:        Apache 2.0
 URL:            https://distrinet.cs.kuleuven.be/software/DREAMaaS
 Source0:        https://distrinet.cs.kuleuven.be/software/DREAMaaS/taskworker-core.tar.bz2
 
+BuildArch:      noarch
 BuildRequires:  maven
 BuildRequires:  systemd
 Requires:       java
@@ -24,7 +25,7 @@ mvn package
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/share/java
-install -p -m 644 target/tasworker-core.jar $RPM_BUILD_ROOT/usr/share/java/taskworker-core.jar
+install -p -m 644 target/taskworker-core.jar $RPM_BUILD_ROOT/usr/share/java/taskworker-core.jar
 mkdir -p $RPM_BUILD_ROOT/usr/bin
 install -p -m 755 bin/taskworker-client $RPM_BUILD_ROOT/usr/bin
 install -p -m 755 bin/taskworker-server $RPM_BUILD_ROOT/usr/bin

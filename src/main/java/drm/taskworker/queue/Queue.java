@@ -43,7 +43,7 @@ import com.netflix.astyanax.retry.BoundedExponentialBackoff;
 import drm.taskworker.Entities;
 import drm.taskworker.config.Config;
 import drm.taskworker.monitoring.Metrics;
-import drm.taskworker.tasks.AbstractTask;
+import drm.taskworker.tasks.Task;
 
 /**
  * A queue implementation on top of cassandra
@@ -186,12 +186,11 @@ public class Queue {
 			// the task did finish, try to mark it as removed once again
 			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1)
 					.setConsistencyLevel(ConsistencyLevel.CL_ALL)
-					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
+					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND id = ?")
 					.asPreparedStatement();
 			
 			markDelete
 					.withStringValue(this.lockName(task.getWorkerName(), task.getJobID()))
-					.withIntegerValue(task.getType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();
 			
@@ -242,14 +241,13 @@ public class Queue {
 			if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
 				// ignore, strange cassandra crap going on
 			} else {
-				long leased_until = c.getColumnByName("leased_until").getLongValue();
+				long leased_until = c.getLongValue("leased_until", 0L);
 
-				if (leased_until < now && c.getColumnByName("type").getIntegerValue() == 0) {
+				if (leased_until < now) {
 					TaskHandle handle = new TaskHandle();
 					handle.setJobID(workflowId);
 					handle.setId(c.getUUIDValue("id", null));
 					handle.setWorkerName(taskType);
-					handle.setType(0);
 					
 					if (leased_until > 0 && leased_until < now) {
 						// HACK: check if it is a real expire
@@ -268,77 +266,16 @@ public class Queue {
 			}
 		}
 		
-		// if we selected no tasks, check if we can lease an end task
-		// TODO: this can all be move in the loop above
-		if (handles.size() == 0) {
-			TaskHandle endTask = null;
-			// count the number of running (leased) normal tasks
-			int n = 0;
-			for (Row<String, String> row : result.getRows()) {
-				ColumnList<String> c = row.getColumns();
-
-				if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
-					// ignore, strange cassandra crap going on
-					continue;
-				}
-				
-				int type = c.getColumnByName("type").getIntegerValue();
-				long leased_until = c.getColumnByName("leased_until").getLongValue();
-				// count the number of leased normal tasks or create endtasks
-				if (type == 0) {
-					if (leased_until > now) {
-						n++;
-					}
-				} else if (type == 1)  {
-					if (leased_until < now) {
-						endTask = new TaskHandle();
-						endTask.setJobID(workflowId);
-						endTask.setId(c.getUUIDValue("id", null));
-						endTask.setType(1);
-						endTask.setWorkerName(taskType);
-						
-						if (leased_until > 0 && leased_until < now) {
-							// HACK: check if it is a real expire
-							if (!this.handleExpiredLease(endTask)) {
-								endTask = null;
-							}
-						}
-					} else {
-						// the end task has been leased, so for now we are out
-						// of work
-					}
-				}
-			}
-			
-			// if no leased normal tasks are left, return the endtask
-			if (n == 0 && endTask != null) {
-				handles.add(endTask);
-			}
-		}
-		
 		// build a batch query that "leases" the tasks
 		if (handles.size() > 0) {
-//			String query = "BEGIN BATCH\n";
-//			for (TaskHandle handle : handles) {
-//				query += "  UPDATE task_queue SET leased_until = " + (now + leaseSeconds) + ", removed = false WHERE queue_id = '" + 
-//						this.lockName(handle.getWorkerName(), handle.getWorkflowID()) 
-//						+ "' AND type = " + handle.getType() + " AND id = " + handle.getId() + ";\n";
-//				
-//				logger.info("Leasing task " + handle.getId() + " " + handle.getType());
-//			}
-//			query += "APPLY BATCH;\n";
-//			
-//			cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM).withCql(query).execute();
-			
 			for (TaskHandle handle : handles) {
 				PreparedCqlQuery<String, String> leaseTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
-						.withCql("UPDATE task_queue SET leased_until = ?, removed = false WHERE queue_id = ? AND type = ? AND id = ?")
+						.withCql("UPDATE task_queue SET leased_until = ?, removed = false WHERE queue_id = ? AND id = ?")
 						.asPreparedStatement();
 				
 				result = leaseTask
 						.withLongValue(now + leaseSeconds)
 						.withStringValue(this.lockName(handle.getWorkerName(), handle.getJobID()))
-						.withIntegerValue(handle.getType())
 						.withUUIDValue(handle.getId())
 						.execute().getResult();
 			}
@@ -350,31 +287,27 @@ public class Queue {
 	/**
 	 * Remove a task from the queue
 	 */
-	public void finishTask(AbstractTask task) {
+	public void finishTask(Task task) {
 		Context tc = Metrics.timer("queue.finish").time();
 		// TODO: ensure that we still have a lease here
-		logger.info("Removing task " + task.getId() + " " + task.getTaskType());
+		logger.info("Removing task " + task.getId());
 		try {
-			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
-					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND type = ? AND id = ?")
+			PreparedCqlQuery<String, String> markDelete = cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE task_queue SET removed = true WHERE queue_id = ? AND id = ?")
 					.asPreparedStatement();
 			
-			markDelete
-					.withStringValue(this.lockName(task.getWorker(), task.getJobId()))
-					.withIntegerValue(task.getTaskType())
+			markDelete.withStringValue(this.lockName(task.getWorker(), task.getJobId()))
 					.withUUIDValue(task.getId())
 					.execute().getResult();
 			
-			if (task.getTaskType() == 1) {
-				// this is an end-task, to we can go ahead and remove the entire "queue" row
-				PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
-					.withCql("DELETE FROM task_queue WHERE queue_id = ?")
+			PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("DELETE FROM task_queue WHERE queue_id = ? AND id = ?")
 					.asPreparedStatement();
 			
-				deleteTask
+			deleteTask
 					.withStringValue(this.lockName(task.getWorker(), task.getJobId()))
+					.withUUIDValue(task.getId())
 					.execute().getResult();
-			}
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
 		} finally {
@@ -385,17 +318,16 @@ public class Queue {
 	/**
 	 * Add a task to the queue
 	 */
-	public void addTask(AbstractTask task) {
+	public void addTask(Task task) {
 		Context tc = Metrics.timer("queue.addtask").time();
-		logger.info("Inserting task " + task.getId() + " " + task.getTaskType());
+		logger.info("Inserting task " + task.getId());
 		try {
 			PreparedCqlQuery<String, String> addTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)
-					.withCql("INSERT INTO task_queue (queue_id, type, id, leased_until, removed) VALUES (?, ?, ?, 0, false)")
+					.withCql("INSERT INTO task_queue (queue_id, id, leased_until, removed) VALUES (?, ?, 0, false)")
 					.asPreparedStatement();
 			
 			addTask
 					.withStringValue(this.lockName(task.getWorker(),  task.getJobId()))
-					.withIntegerValue(task.getTaskType())
 					.withUUIDValue(task.getId())
 					.execute().getResult();
 			

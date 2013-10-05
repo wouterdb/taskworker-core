@@ -32,7 +32,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import drm.taskworker.tasks.AbstractTask;
+import drm.taskworker.tasks.Task;
 
 
 @Path("/job/{id}")
@@ -64,7 +64,7 @@ public class Job {
         }
         
 		Map<String, Integer> stats = new HashMap<>();
-		for (AbstractTask task : job.getHistory()) {
+		for (Task task : job.getHistory()) {
 			if (!stats.containsKey(task.getWorker())) {
 				stats.put(task.getWorker(), 0);
 			}

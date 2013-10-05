@@ -41,8 +41,6 @@ import drm.taskworker.config.WorkflowConfig;
 import drm.taskworker.queue.Queue;
 import drm.taskworker.queue.TaskHandle;
 import drm.taskworker.schedule.WeightedRoundRobin;
-import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.JobStateListener;
 import drm.taskworker.tasks.Task;
 
@@ -60,7 +58,6 @@ public class Service {
 	private Map<String, WeightedRoundRobin> priorities = new HashMap<>();
 	private Map<String, Long> timeout = new HashMap<>();
 	
-	private Map<UUID,String> endsteps = new HashMap<>();
 	private Map<UUID,WorkflowConfig> wfConfig = new HashMap<>();
 
 	/**
@@ -125,11 +122,6 @@ public class Service {
 		// set the start date of the workflow
 		job.setStartAt(new Date());
 
-		// send end of workflow as the last task
-		EndTask endTask = new EndTask(start, start.getWorker());
-		endTask.save();
-		this.queueTask(endTask);
-
 		logger.info("Started workflow. Added task for " + start.getWorker());
 	}
 
@@ -139,10 +131,11 @@ public class Service {
 	 * @param task
 	 *            The task to queue
 	 */
-	public void queueTask(AbstractTask task) {
+	public void queueTask(Task task) {
+		task.save();
+		
 		// set the task as scheduled
 		this.queue.addTask(task);
-		task.save();
 	}
 
 	/**
@@ -154,7 +147,7 @@ public class Service {
 	 *            The type of worker
 	 * @return A task or null if no task available
 	 */
-	public AbstractTask getTask(UUID workflowId, String workerType) {
+	public Task getTask(UUID workflowId, String workerType) {
 		List<TaskHandle> tasks;
 		try {
 			tasks = queue.leaseTasks(15, TimeUnit.SECONDS, 1, workerType, workflowId);
@@ -162,7 +155,7 @@ public class Service {
 			// do work!
 			if (!tasks.isEmpty()) {
 				TaskHandle first = tasks.get(0);
-				return AbstractTask.load(first.getJobID(), first.getId());
+				return Task.load(first.getJobID(), first.getId());
 			}
 		} catch (ConnectionException e) {
 			throw new IllegalStateException(e);
@@ -179,7 +172,7 @@ public class Service {
 	 *            The type of worker
 	 * @return A task or null if no task available
 	 */
-	public AbstractTask getTask(String workerType) {
+	public Task getTask(String workerType) {
 
 		WeightedRoundRobin rrs = getPriorities(workerType);
 		if (rrs == null) {
@@ -193,7 +186,7 @@ public class Service {
 			return getTask(null, workerType);
 		}
 		
-		AbstractTask handle = getTask(UUID.fromString(workflow), workerType);
+		Task handle = getTask(UUID.fromString(workflow), workerType);
 
 		if (handle == null && workflow != null) {
 
@@ -213,25 +206,17 @@ public class Service {
 	 * @param handle
 	 *            A handle for the task that needs to be removed.
 	 */
-	public void deleteTask(AbstractTask handle) {
+	public void deleteTask(Task handle) {
 		this.queue.finishTask(handle);
 	}
 
 	/**
-	 * Mark the end of a workflow. Only one task can finish a workflow!
-	 * 
-	 * @param task
-	 * @param nextTasks
+	 * Mark the end of a job. Only one task can finish a job!
 	 */
-	public void workflowFinished(AbstractTask task, List<AbstractTask> nextTasks) {
-		Job job = task.getJob();
-
+	public void jobFinished(Job job) {
 		logger.info("Job " + job.getJobId() + " was finished");
 
-		if (task.getTaskType() == 1) {
-			job.setFinishedAt(new Date());
-		}
-
+		job.setFinishedAt(new Date());
 		job.calcStats();
 
 		synchronized (listeners) {
@@ -351,21 +336,6 @@ public class Service {
 		synchronized (listeners) {
 			listeners.remove(list);
 		}
-	}
-	
-	/**
-	 * This method checks if the given step in a workflow is the last one
-	 */
-	public synchronized boolean isJobEnd(UUID jobId, String endStep) {
-		if (this.endsteps.containsKey(jobId)) {
-			return this.endsteps.get(jobId).equals(endStep);
-		}
-		
-		Job job = Job.load(jobId);
-		String e = job.getWorkflowConfig().getWorkflowEnd();
-		this.endsteps.put(jobId, e);
-		
-		return e.equals(endStep);
 	}
 	
 	/**

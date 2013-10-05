@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import httplib, sys, datetime, urllib, socket, json
+import httplib, sys, datetime, urllib, socket, json, time
 from argparse import ArgumentParser
 from prettytable import PrettyTable
 
@@ -104,9 +104,9 @@ def new_job(options):
     data = ""
     with open(options.data, "r") as fd:
         data = fd.read()
-    
-    params = urllib.urlencode({'start_after': options.start_after.strftime("%s"), 
-                               'finish_before': options.finish_before.strftime("%s"), 
+
+    params = urllib.urlencode({'start_after': int(time.mktime(options.start_after.timetuple())),
+                               'finish_before': int(time.mktime(options.finish_before.timetuple())),
                                'arg0': data})
     
     call(options, "POST", "/newjob/" + options.workflow, {

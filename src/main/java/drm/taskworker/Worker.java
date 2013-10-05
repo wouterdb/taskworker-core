@@ -19,19 +19,14 @@
 
 package drm.taskworker;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang.ArrayUtils;
-
 import com.codahale.metrics.Timer.Context;
 
 import drm.taskworker.monitoring.Metrics;
-import drm.taskworker.schedule.WeightedRoundRobin;
-import drm.taskworker.tasks.AbstractTask;
-import drm.taskworker.tasks.EndTask;
 import drm.taskworker.tasks.Task;
 import drm.taskworker.tasks.TaskResult;
 import drm.taskworker.tasks.TaskResult.Result;
@@ -90,15 +85,6 @@ public abstract class Worker implements Runnable {
 	public abstract TaskResult work(Task task);
 
 	/**
-	 * Handle the end of workflow token by sending it to the next hop.
-	 */
-	public TaskResult work(EndTask task) {
-		TaskResult result = new TaskResult();
-		result.addNextTask(new EndTask(task, this.getNextWorker(task.getJobId())));
-		return result.setResult(TaskResult.Result.SUCCESS);
-	}
-
-	/**
 	 * Stop working so the thread ends clean
 	 */
 	public void stopWorking() {
@@ -119,7 +105,7 @@ public abstract class Worker implements Runnable {
 			try {
 				Context tcLease = Metrics.timer("worker.lease").time();
 				Context tcNoLease = Metrics.timer("worker.nolease").time();
-				AbstractTask task = svc.getTask(this.name);
+				Task task = svc.getTask(this.name);
 				
 				if (task != null) {
 					tcLease.stop();
@@ -131,16 +117,7 @@ public abstract class Worker implements Runnable {
 					TaskResult result = null;
 					task.setStartedAt();
 					try {
-						if (task.getTaskType() == 0) {
-							result = this.work((Task) task);
-
-						} else if (task.getTaskType() == 1) {
-							result = this.work((EndTask) task);
-						} else {
-							logger.warning("Task type " + task.getTaskType() + " not known.");
-							continue;
-						}
-
+						result = this.work((Task) task);
 					} catch (Exception e) {
 						result = new TaskResult();
 						
@@ -159,22 +136,27 @@ public abstract class Worker implements Runnable {
 					}
 
 					// process the result
-					if (result.getResult() == TaskResult.Result.SUCCESS) {
+					if (result.getResult() == TaskResult.Result.FINISHED) {
+						svc.jobFinished(task.getJob());
+						
+					} else if (result.getResult() == TaskResult.Result.SUCCESS) {
 						trace("DONE", task);
-						if (svc.isJobEnd(task.getJobId(), this.getName())) {
-							// this is the end of the workflow
-							// if end-of-batch, signal end-of-job
-							if (task.getTaskType() == 1) {
-								svc.workflowFinished(task, result.getNextTasks());
-							}
-						} else {
-							for (AbstractTask newTask : result.getNextTasks()) {
+						List<Task> tasks = result.getNextTasks();
+						// is this is a split, do the split
+						if (tasks.size() > 1) {
+							// allocate a new uuid that will become the 
+							// taskid of the joined task
+							UUID joinId = UUID.randomUUID();
+							Job.storeJoin(task.getJobId(), joinId, tasks.size());								
+							for (Task newTask : tasks) {
+								newTask.markSplit(joinId);
 								svc.queueTask(newTask);
 								trace("NEW", newTask);
 							}
-							if (task.getTaskType() == 1) {
-								removeFromSchedule(task);
-							}
+						} else if (tasks.size() == 1) {
+							svc.queueTask(tasks.get(0));
+						} else {
+							// do nothing
 						}
 						svc.deleteTask(task);
 						
@@ -212,35 +194,35 @@ public abstract class Worker implements Runnable {
 		}
 	}
 
-	private void trace(String cmd, AbstractTask task) {
+	private void trace(String cmd, Task task) {
 		logger.info(String.format("[%s] %s %s", this.name, cmd, task.toString()));
 	}
 
-	/**
-	 * This method is called when an endtask has been processed. It removes 
-	 * the workflow for the current worker from the priorities table.
-	 * 
-	 * @param task
-	 */
-	private void removeFromSchedule(AbstractTask task) {
-		Service svc = Service.get();
-		WeightedRoundRobin wrr = svc.getPriorities(this.name);
-		int i = 0;
-		UUID workflowId = task.getJobId();
-		String[] names = wrr.getNames();
-		for (; i < names.length; i++) {
-			if (names[i].equals(workflowId.toString()))
-				break;
-		}
-		if (i == names.length)
-			return;
-		int size = names.length;
-
-		float[] weights = new float[size - 1];
-		Arrays.fill(weights, 1.0f);
-		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(
-				wrr.getNames(), i), weights);
-		
-		svc.setPriorities(this.name, wrr);
-	}
+//	/**
+//	 * This method is called when an endtask has been processed. It removes 
+//	 * the workflow for the current worker from the priorities table.
+//	 * 
+//	 * @param task
+//	 */
+//	private void removeFromSchedule(Task task) {
+//		Service svc = Service.get();
+//		WeightedRoundRobin wrr = svc.getPriorities(this.name);
+//		int i = 0;
+//		UUID workflowId = task.getJobId();
+//		String[] names = wrr.getNames();
+//		for (; i < names.length; i++) {
+//			if (names[i].equals(workflowId.toString()))
+//				break;
+//		}
+//		if (i == names.length)
+//			return;
+//		int size = names.length;
+//
+//		float[] weights = new float[size - 1];
+//		Arrays.fill(weights, 1.0f);
+//		wrr = new WeightedRoundRobin((String[]) ArrayUtils.remove(
+//				wrr.getNames(), i), weights);
+//		
+//		svc.setPriorities(this.name, wrr);
+//	}
 }

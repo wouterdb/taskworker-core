@@ -69,24 +69,9 @@ public class TaskHandle {
 		this.workerName = workerName;
 	}
 
-	/**
-	 * @return the type
-	 */
-	public int getType() {
-		return type;
-	}
-
-	/**
-	 * @param type the type to set
-	 */
-	public void setType(int type) {
-		this.type = type;
-	}
-
 	private UUID jobId;
 	private UUID id;
 	private String workerName;
-	private int type;
 	
 	public TaskHandle() {
 	}

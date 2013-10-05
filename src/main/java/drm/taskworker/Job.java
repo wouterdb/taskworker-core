@@ -40,7 +40,6 @@ import com.netflix.astyanax.model.Row;
 import drm.taskworker.config.Config;
 import drm.taskworker.config.WorkflowConfig;
 import drm.taskworker.monitoring.Statistic;
-import drm.taskworker.tasks.AbstractTask;
 import drm.taskworker.tasks.Task;
 
 /**
@@ -119,7 +118,7 @@ public class Job {
 	 */
 	public Task getStartTask() {
 		if (this.startTask == null) {
-			this.startTask = (Task)AbstractTask.load(this.jobId, this.startTaskId);
+			this.startTask = (Task)Task.load(this.jobId, this.startTaskId);
 		}
 		return startTask;
 	}
@@ -386,7 +385,7 @@ public class Job {
 	/**
 	 * Get the history of the workflow.
 	 */
-	public List<AbstractTask> getHistory() {
+	public List<Task> getHistory() {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
@@ -394,9 +393,9 @@ public class Job {
 					.asPreparedStatement().withUUIDValue(getJobId())
 					.execute();
 
-			List<AbstractTask> tasks = new ArrayList<>();
+			List<Task> tasks = new ArrayList<>();
 			for (Row<String, String> row : result.getResult().getRows()) {
-				tasks.add(AbstractTask.createTaskFromDB(row));
+				tasks.add(Task.createTaskFromDB(row));
 			}
 
 			return tasks;
@@ -416,17 +415,16 @@ public class Job {
 	public void calcStats() {
 		Map<String, List<Integer>> samples = new HashMap<String, List<Integer>>();
 		
-		for (AbstractTask t : getHistory()) {
+		for (Task t : getHistory()) {
 			if(t.getFinishedAt()==null)
 				return;
-			String key = t.getTaskType() + "." + t.getWorker();
+			String key = t.getWorker();
 			List<Integer> sample = samples.get(key);
 			if (sample == null) {
 				sample = new ArrayList<>();
 				samples.put(key, sample);
 			}
-			sample.add((int) (t.getFinishedAt().getTime() - t.getStartedAt()
-					.getTime()));
+			sample.add((int) (t.getFinishedAt().getTime() - t.getStartedAt().getTime()));
 		}
 
 		List<Statistic> out = new LinkedList<>();
@@ -478,7 +476,62 @@ public class Job {
 		this.startTask = new Task(this, this.getWorkflowConfig().getWorkflowStart());
 		this.startTaskId = this.startTask.getId();
 		
+		this.startTask.initJoin();
+		
 		return this.startTask;
+	}
+	
+	/**
+	 * Store the join id for a job
+	 */
+	public static void storeJoin(UUID jobId, UUID joinId, int number_tasks) {
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE join SET n_tasks = n_tasks + " + number_tasks + " WHERE job_id = ? AND join_id = ?")
+					.asPreparedStatement()
+					.withUUIDValue(jobId)
+					.withUUIDValue(joinId)
+					.execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Decrement the join count of a join id
+	 */
+	public static void decrementJoin(UUID jobId, UUID joinId) {
+		try {
+			cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("UPDATE join SET n_tasks = n_tasks - 1 WHERE job_id = ? AND join_id = ?")
+					.asPreparedStatement()
+					.withUUIDValue(jobId)
+					.withUUIDValue(joinId)
+					.execute();
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Get the current join count
+	 */
+	public static int getJoinCount(UUID jobId, UUID joinId) {
+		try {
+			OperationResult<CqlResult<String, String>> result = cs().prepareQuery(Entities.CF_STANDARD1)
+					.withCql("SELECT join_id, n_tasks FROM join WHERE job_id = ? AND join_id = ?")
+					.asPreparedStatement()
+					.withUUIDValue(jobId)
+					.withUUIDValue(joinId)
+					.execute();
+			
+			for (Row<String, String> row : result.getResult().getRows()) {
+				return row.getColumns().getLongValue("n_tasks", 0L).intValue();
+			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+		}
+		return 0;
 	}
 	
 	/**

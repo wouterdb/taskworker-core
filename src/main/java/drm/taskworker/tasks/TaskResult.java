@@ -28,10 +28,10 @@ import java.util.List;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class TaskResult {
-	public enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR};
+	public enum Result {SUCCESS, ERROR, EXCEPTION, ARGUMENT_ERROR, FINISHED};
 	
 	private Result result = null;
-	private List<AbstractTask> tasks = null;
+	private List<Task> tasks = null;
 	private Exception exception = null;
 	private boolean fail = false;
 
@@ -39,7 +39,7 @@ public class TaskResult {
 	 * Initialize a new taskresult
 	 */
 	public TaskResult() {
-		this.tasks = new ArrayList<AbstractTask>();
+		this.tasks = new ArrayList<Task>();
 	}
 	
 	/**
@@ -68,7 +68,7 @@ public class TaskResult {
 	 * 
 	 * @param task
 	 */
-	public void addNextTask(AbstractTask task) {
+	public void addNextTask(Task task) {
 		this.tasks.add(task);
 	}
 	
@@ -84,8 +84,17 @@ public class TaskResult {
 	 * 
 	 * @return A list of tasks that are the result of this task
 	 */
-	public List<AbstractTask> getNextTasks() {
+	public List<Task> getNextTasks() {
 		return this.tasks;
+	}
+	
+	/**
+	 * Does this task split the job? A split is detected if more than one
+	 * new task is generated.
+	 * @return
+	 */
+	public boolean isSplit() {
+		return this.tasks.size() > 0;
 	}
 
 	/**

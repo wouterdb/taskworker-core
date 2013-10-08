@@ -47,6 +47,8 @@ import com.netflix.astyanax.thrift.ThriftFamilyFactory;
 
 import drm.taskworker.monitoring.Statistic;
 
+import static drm.taskworker.config.Config.cfg;
+
 public class Entities {
 
 	public static final Serializer<List<Statistic>> STATS_SERIALISER;
@@ -82,10 +84,8 @@ public class Entities {
 	}
 
 	private static synchronized Keyspace setupCassandra() {
-		String seed = System.getProperty("taskworker.cassandra.seed");
-		if (seed == null || seed.isEmpty()) {
-			seed = "127.0.0.1";
-		}
+		String seed = cfg().getProperty("taskworker.cassandra.seed", "127.0.0.1:9610");
+		logger.info("Connecting to cassandra seed(s): " + seed);
 		AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
 			.forCluster("Test Cluster").
 			forKeyspace("taskworker")

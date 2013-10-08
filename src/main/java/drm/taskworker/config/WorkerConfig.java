@@ -134,17 +134,19 @@ public class WorkerConfig {
 	@SuppressWarnings("unchecked")
 	public static Map<String,WorkerConfig> parseWorkers(@SuppressWarnings("rawtypes") List<Map> workers) {
 		Map<String,WorkerConfig> results = new HashMap<String, WorkerConfig>();
-		for (Map<String,Object> map : workers) {
-			if (!map.containsKey("name") || !map.containsKey("class") || !map.containsKey("code")) {
-				throw new IllegalArgumentException("Each worker should have name, class and code attributes set in the config file.");
+		if (workers != null) {
+			for (Map<String,Object> map : workers) {
+				if (!map.containsKey("name") || !map.containsKey("class") || !map.containsKey("code")) {
+					throw new IllegalArgumentException("Each worker should have name, class and code attributes set in the config file.");
+				}
+				
+				WorkerConfig obj = new WorkerConfig((String)map.get("name"), (String)map.get("class"), (String)map.get("code"));
+				obj.setThreads(Integer.valueOf((Integer)map.get("threads")));
+				
+				results.put((String)map.get("name"), obj);
 			}
-			
-			WorkerConfig obj = new WorkerConfig((String)map.get("name"), (String)map.get("class"), (String)map.get("code"));
-			obj.setThreads(Integer.valueOf((Integer)map.get("threads")));
-			
-			results.put((String)map.get("name"), obj);
 		}
-		
+			
 		return results;
 	}
 	

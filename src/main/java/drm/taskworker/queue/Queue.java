@@ -142,8 +142,12 @@ public class Queue {
 		Object lockObject = null;
 		
 		if (!this.localLocks.containsKey(lockKey)) {
-			lockObject = new Object();
-			this.localLocks.put(lockKey, lockObject);
+			synchronized (this.localLocks) {
+				if (!this.localLocks.containsKey(lockKey)) {
+					lockObject = new Object();
+					this.localLocks.put(lockKey, lockObject);
+				}
+			}
 		} else {
 			lockObject = this.localLocks.get(lockKey);
 		}

@@ -24,6 +24,8 @@ def main():
                 help="Finish the job before this data in format YYYY-MM-DD:HH:MM:SS")
     parser_new.add_argument("-d", dest="data",
                 help="The file with data to submit to the first task")
+    parser_new.add_argument("-D", dest="args",
+                help="data as arg")
     parser_new.set_defaults(func=new_job)
     
     parser_jobs = subparsers.add_parser("jobs", help="Retrieve a list of jobs")
@@ -100,15 +102,20 @@ def new_job(options):
         print("A workflow is required")
         sys.exit(1)
     
-    # load the data
-    data = ""
-    with open(options.data, "r") as fd:
-        data = fd.read()
-
-    params = urllib.urlencode({'start_after': int(time.mktime(options.start_after.timetuple())),
-                               'finish_before': int(time.mktime(options.finish_before.timetuple())),
-                               'arg0': data})
+    rawparams = {'start_after': int(time.mktime(options.start_after.timetuple())),
+                               'finish_before': int(time.mktime(options.finish_before.timetuple()))}
+    if not (options.data is None):
+        # load the data
+        data = ""
+        with open(options.data, "r") as fd:
+            data = fd.read()
+	    rawparams['arg0'] = data
     
+    if not (options.args is None):
+         rawparams['arg0'] = options.args 
+
+    print(rawparams)   
+    params = urllib.urlencode(rawparams)
     call(options, "POST", "/newjob/" + options.workflow, {
             "Content-Type" : "application/x-www-form-urlencoded"}, params)
         

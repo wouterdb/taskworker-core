@@ -142,12 +142,19 @@ public class Queue {
 		Object lockObject = null;
 		
 		if (!this.localLocks.containsKey(lockKey)) {
-			lockObject = new Object();
-			this.localLocks.put(lockKey, lockObject);
+			synchronized (this.localLocks) {
+				if (!this.localLocks.containsKey(lockKey)) {
+					lockObject = new Object();
+					this.localLocks.put(lockKey, lockObject);
+				}else{
+					lockObject = this.localLocks.get(lockKey);
+				}
+			}
 		} else {
 			lockObject = this.localLocks.get(lockKey);
 		}
 
+		//
 		synchronized (lockObject) { // first do a local lock, because the class is shared between all threads
 			// get a lock if distributed is true
 			if (distributed && !this.lock(taskType, jobId)) {

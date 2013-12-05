@@ -33,6 +33,7 @@ import java.util.logging.Logger;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
+import com.netflix.astyanax.connectionpool.exceptions.SerializationException;
 import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
@@ -496,12 +497,16 @@ public class Task {
 				UUID jobId = columns.getUUIDValue("job_id", null);
 				UUID taskId = columns.getUUIDValue("task_id", null);
 				String name = columns.getStringValue("name", null);
-				Object value = ObjectSerializer.get().fromByteBuffer(columns.getByteBufferValue("value", null));
-
-				ValueRef ref = new ValueRef(jobId, taskId, name);
-				ref.setValue(value);
-				
-				params.put(name, ref);
+				try {
+					Object value = ObjectSerializer.get().fromByteBuffer(columns.getByteBufferValue("value", null));
+					
+					ValueRef ref = new ValueRef(jobId, taskId, name);
+					ref.setValue(value);
+					
+					params.put(name, ref);
+				} catch (SerializationException e) {
+					logger.warning("Unable to deserialize value");
+				}
 			}
 		} catch (ConnectionException e) {
 			e.printStackTrace();

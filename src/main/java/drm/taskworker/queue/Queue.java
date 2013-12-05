@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.codahale.metrics.Timer.Context;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
@@ -40,6 +39,7 @@ import com.netflix.astyanax.query.PreparedCqlQuery;
 import com.netflix.astyanax.recipes.locks.ColumnPrefixDistributedRowLock;
 import com.netflix.astyanax.retry.BoundedExponentialBackoff;
 
+import dnet.minimetrics.TimerContext;
 import drm.taskworker.Entities;
 import drm.taskworker.config.Config;
 import drm.taskworker.monitoring.Metrics;
@@ -79,7 +79,7 @@ public class Queue {
 	}
 	
 	private boolean lock(String workerName, UUID workflowID) {
-		Context tc = Metrics.timer("queue.lock").time();
+		TimerContext tc = Metrics.timer("queue.lock").time();
 		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
@@ -96,7 +96,7 @@ public class Queue {
 	}
 	
 	private boolean release(String workerName, UUID workflowID) {
-		Context tc = Metrics.timer("queue.unlock").time();
+		TimerContext tc = Metrics.timer("queue.unlock").time();
 		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
@@ -162,7 +162,7 @@ public class Queue {
 				return handles;
 			}
 	
-			Context tc = Metrics.timer("queue.lease").time();
+			TimerContext tc = Metrics.timer("queue.lease").time();
 			handles = leaseWithNoLock(lease, unit, limit, taskType, jobId);
 			tc.stop();
 	
@@ -295,7 +295,7 @@ public class Queue {
 	 * Remove a task from the queue
 	 */
 	public void finishTask(Task task) {
-		Context tc = Metrics.timer("queue.finish").time();
+		TimerContext tc = Metrics.timer("queue.finish").time();
 		// TODO: ensure that we still have a lease here
 		logger.info("Removing task " + task.getId());
 		try {
@@ -326,7 +326,7 @@ public class Queue {
 	 * Add a task to the queue
 	 */
 	public void addTask(Task task) {
-		Context tc = Metrics.timer("queue.addtask").time();
+		TimerContext tc = Metrics.timer("queue.addtask").time();
 		logger.info("Inserting task " + task.getId());
 		try {
 			PreparedCqlQuery<String, String> addTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)

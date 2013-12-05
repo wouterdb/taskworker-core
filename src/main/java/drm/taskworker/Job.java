@@ -36,6 +36,7 @@ import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.model.CqlResult;
 import com.netflix.astyanax.model.Row;
+import com.netflix.astyanax.serializers.ObjectSerializer;
 
 import drm.taskworker.config.Config;
 import drm.taskworker.config.WorkflowConfig;
@@ -97,9 +98,6 @@ public class Job {
 	 * @return the workflowConfig
 	 */
 	public WorkflowConfig getWorkflowConfig() {
-		if (this.workflowConfig == null) {
-			this.loadConfig();
-		}
 		return this.workflowConfig;
 	}
 
@@ -227,14 +225,15 @@ public class Job {
 	public void insert() {
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("INSERT INTO job (job_id, start_task_id, workflow_name, start_after, finish_before, started, finished, failed) " + 
-								" VALUES (?, ?, ?, ?, ?, false, false, false);")
+				.withCql("INSERT INTO job (job_id, start_task_id, workflow_name, start_after, finish_before, " + 
+						"started, finished, failed, configuration) VALUES (?, ?, ?, ?, ?, false, false, false, ?);")
 				.asPreparedStatement()
 				.withUUIDValue(this.getJobId())
 				.withUUIDValue(this.getStartTask().getId())
 				.withStringValue(this.workflowName)
 				.withLongValue(this.startAfter)
 				.withLongValue(this.finishBefore)
+				.withByteBufferValue(this.workflowConfig, ObjectSerializer.get())
 				.execute();
 		} catch (ConnectionException e) {
 			e.printStackTrace();
@@ -298,6 +297,8 @@ public class Job {
 		job.startedAt = columns.getDateValue("started_at", null);
 		job.finishedAt = columns.getDateValue("finished_at", null);
 		job.stats = columns.getValue("stats", Entities.STATS_SERIALISER,null);
+		job.workflowConfig = (WorkflowConfig)ObjectSerializer.get().fromByteBuffer(
+				columns.getByteBufferValue("configuration", null));
 		
 		return job;
 	}

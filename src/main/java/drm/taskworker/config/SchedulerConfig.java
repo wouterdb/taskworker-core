@@ -19,14 +19,15 @@
  */
 package drm.taskworker.config;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import drm.taskworker.schedule.IScheduler;
 
 @SuppressWarnings("rawtypes")
-public class SchedulerConfig {
-
+public class SchedulerConfig implements Serializable {
+	private static final long serialVersionUID = 6818202491324619685L;
 	private String schedulerClass = null;
 	private Map arguments = null;
 	

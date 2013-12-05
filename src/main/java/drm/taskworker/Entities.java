@@ -125,7 +125,7 @@ public class Entities {
 				queries.add("CREATE TABLE task_timing (id uuid, started_at timestamp, finished_at timestamp, PRIMARY KEY (id))");
 				queries.add("CREATE TABLE task_queue (id uuid, queue_id text, leased_until timestamp, removed boolean, PRIMARY KEY(queue_id, id))");
 				queries.add("CREATE TABLE task_parent (id uuid, job_id uuid, parent_id uuid, PRIMARY KEY((job_id, id), parent_id))");
-				queries.add("CREATE TABLE job (job_id uuid, start_task_id uuid, workflow_name text, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, started_at timestamp, finished_at timestamp, stats blob, PRIMARY KEY(job_id, start_after, finish_before))");
+				queries.add("CREATE TABLE job (job_id uuid, start_task_id uuid, workflow_name text, start_after timestamp, finish_before timestamp, finished boolean, started boolean, failed boolean, started_at timestamp, finished_at timestamp, stats blob, configuration blob, PRIMARY KEY(job_id, start_after, finish_before))");
 				queries.add("CREATE INDEX job_started ON job (started)");
 				queries.add("CREATE INDEX job_finished ON job (finished)");
 				queries.add("CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))");

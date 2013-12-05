@@ -19,18 +19,22 @@
 
 package drm.taskworker.config;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * The configuration of an entire workflow.
  * 
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkflowConfig {
+public class WorkflowConfig implements Serializable {
+	private static final long serialVersionUID = 6715215751511915058L;
 	private String workflowName = null;
 	private Map<String, Map<String, String>> steps = new HashMap<>();
 	private String workflowStart = null;
+	private Map<String,String> options = new HashMap<>();
 
 	public WorkflowConfig(String workflow) {
 		this.setWorkflowName(workflow);
@@ -61,9 +65,29 @@ public class WorkflowConfig {
 				wf.setWorkflowStart((String)options.get("start"));
 			}
 			
+			if (options.containsKey("options")) {
+				Map<String, String> key_params = (Map<String, String>)options.get("options");
+				for (Entry<String, String> option : key_params.entrySet()) {
+					wf.options.put(option.getKey(), option.getValue());
+				}
+			}
 		}
 
 		return workflows;
+	}
+	
+	/**
+	 * Is the option with the given key set?
+	 */
+	public boolean containsOption(String key) {
+		return this.options.containsKey(key);
+	}
+	
+	/**
+	 * Get a configuration options
+	 */
+	public String getOption(String key) {
+		return this.options.get(key);
 	}
 	
 	/**

@@ -21,6 +21,7 @@ package drm.taskworker.config;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
@@ -36,7 +37,8 @@ import java.util.logging.Logger;
  *
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
-public class WorkerConfig {
+public class WorkerConfig implements Serializable {
+	private static final long serialVersionUID = -3148371634621038984L;
 	private String workerName = null;
 	private String workerClass = null;
 	private int threads = 1;

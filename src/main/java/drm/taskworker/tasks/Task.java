@@ -95,49 +95,6 @@ public class Task {
 		this.setCreatedAt(new Date());
 	}
 
-//	/**
-//	 * Create a task with multiple parents.
-//	 * 
-//	 * @param parents
-//	 * @param worker2
-//	 */
-//	public Task(List<Task> parents, String worker) {
-//		this();
-//
-//		if (parents.size() == 0) {
-//			throw new IllegalArgumentException(
-//					"Each task should have at least one parent.");
-//		}
-//
-//		Task parentTask = parents.get(0);
-//		this.setJobId(parentTask.getJobId());
-//		for (Task parent : parents) {
-//			this.parentIds.add(parent.getId());
-//		}
-//
-//		this.worker = worker;
-//
-//		// set the date the task was created
-//		this.setCreatedAt(new Date());
-//	}
-
-//	public Task(Task one, List<UUID> parents, String worker) {
-//		this();
-//		
-//		if (parents.size() == 0) {
-//			throw new IllegalArgumentException(
-//					"Each task should have at least one parent.");
-//		}
-//
-//		this.setJobId(one.getJobId());
-//
-//		this.parentIds.addAll(parents);
-//		this.worker = worker;
-//
-//		// set the date the task was created
-//		this.setCreatedAt(new Date());
-//	}
-	
 	Task() {
 	}
 	
@@ -198,6 +155,20 @@ public class Task {
 	public Job getJob() {
 		Job job = Job.load(getJobId());
 		return job;
+	}
+	
+	/**
+	 * Get a job wide options
+	 */
+	public String getJobOption(String key) {
+		return this.getJob().getWorkflowConfig().getOption(key);
+	}
+	
+	/**
+	 * Check if a job option exists
+	 */
+	public boolean containsJobOption(String key) {
+		return this.getJob().getWorkflowConfig().containsOption(key);
 	}
 
 	/**

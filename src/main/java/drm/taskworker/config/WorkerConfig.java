@@ -38,13 +38,14 @@ import java.util.logging.Logger;
  * @author Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
  */
 public class WorkerConfig implements Serializable {
+	private static Map<String, URLClassLoader> classLoaders = new HashMap<>();
+	
 	private static final long serialVersionUID = -3148371634621038984L;
 	private String workerName = null;
 	private String workerClass = null;
 	private int threads = 1;
 	private static Logger logger = Logger.getLogger(Config.class.getCanonicalName());
 	
-	private URLClassLoader urlLoader = null;
 	private String code = null;
 	
 	public WorkerConfig(String workerName, String workerClass, String code) {
@@ -53,25 +54,30 @@ public class WorkerConfig implements Serializable {
 		this.code = code;
 	}
 	
-	private URLClassLoader getLoader() {
-		if (urlLoader == null) {
+	private static URLClassLoader getLoader(String codeFile) {
+		URLClassLoader loader = null; 
+		if (!classLoaders.containsKey(codeFile)) {
 			try {
-				File jarFile = new File(this.code);
+				logger.log(Level.INFO, "Creating classloader for " + codeFile);
+				File jarFile = new File(codeFile);
 				
 				if (!jarFile.isFile()) {
 					logger.log(Level.SEVERE, "Unable to locate jar " + jarFile);
 					return null;
 				}
 				
-				this.urlLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, 
+				loader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, 
 					drm.taskworker.Worker.class.getClassLoader());
+				classLoaders.put(codeFile, loader);
 			} catch(IOException e) {
 				logger.log(Level.SEVERE, "Bad url for worker code path", e);
 			}
 
+		} else {
+			loader = classLoaders.get(codeFile);
 		}
 		
-		return this.urlLoader;
+		return loader;
 	}
 	
 	/**
@@ -108,7 +114,7 @@ public class WorkerConfig implements Serializable {
 	@SuppressWarnings("unchecked")
 	public drm.taskworker.Worker getWorkerInstance() {
 		try {
-			Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)getLoader().loadClass(this.getWorkerClass());
+			Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)getLoader(this.code).loadClass(this.getWorkerClass());
 			//Class<drm.taskworker.Worker> workerCls = (Class<drm.taskworker.Worker>)Class.forName(this.getWorkerClass());
 			Constructor<drm.taskworker.Worker> workerCtor = workerCls.getConstructor(String.class);
 			return workerCtor.newInstance(this.getWorkerName());

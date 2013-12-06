@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import httplib, sys, datetime, urllib, socket, json, time
+import httplib, sys, datetime, urllib, socket, json, time, os
 from argparse import ArgumentParser
 from prettytable import PrettyTable
 
@@ -24,7 +24,8 @@ def main():
                 help="Finish the job before this data in format YYYY-MM-DD:HH:MM:SS")
     parser_new.add_argument("-d", dest="data",
                 help="The file with data to submit to the first task")
-    parser_new.add_argument("-D", dest="args", nargs = "+",help="data as arg")
+    parser_new.add_argument("-p", dest="params", nargs = "+",help="Direct arguments for the first job, name=value seperated with spaces.")
+    parser_new.add_argument("-D", dest="args", help="data as arg")
     parser_new.set_defaults(func=new_job)
 
     parser_jobs = subparsers.add_parser("jobs", help="Retrieve a list of jobs")
@@ -104,7 +105,7 @@ def new_job(options):
     rawparams = {'start_after': int(time.mktime(options.start_after.timetuple())),
                                'finish_before': int(time.mktime(options.finish_before.timetuple()))}
 
-    if not (options.args is None):
+    if not (options.params is None):
         args = {}
         for arg in options.args:
             key,value = arg.split("=")
@@ -118,6 +119,9 @@ def new_job(options):
             args[key] = value
 
         rawparams["json_data"] = json.dumps(args)
+
+    elif not (options.args is None):
+        rawparams['arg0'] = options.args
 
     elif not (options.data is None):
         # load the data

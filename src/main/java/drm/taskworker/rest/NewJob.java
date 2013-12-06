@@ -20,6 +20,8 @@
 package drm.taskworker.rest;
 
 import java.util.Date;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
@@ -27,6 +29,8 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.core.MediaType;
+
+import com.google.gson.Gson;
 
 import drm.taskworker.Job;
 import drm.taskworker.Service;
@@ -42,7 +46,8 @@ public class NewJob {
     public String newJob(@PathParam("workflow") String workflowName,
     		@FormParam("start_after") String start_after,
     		@FormParam("finish_before") String finish_before,
-    		@FormParam("arg0") String arg0) {
+    		@FormParam("arg0") String arg0,
+    		@FormParam("json_data") String json_data) {
 		// get the delay
 		int after = Integer.valueOf(start_after);
 		int before = Integer.valueOf(finish_before);
@@ -57,8 +62,20 @@ public class NewJob {
 		}
 		
 		Task task = job.newStartTask();
-		task.addParam("arg0", arg0);
-					
+		if (json_data != null) {
+			Gson g = new Gson();
+			@SuppressWarnings("unchecked")
+			Map<String, Object> data = (Map<String, Object>) g.fromJson(json_data, Map.class);
+			
+			for (Entry<String,Object> entry : data.entrySet()) {
+				task.addParam(entry.getKey(), entry.getValue());
+			}
+		} else if (arg0 != null) {
+			task.addParam("arg0", arg0);
+		} else {
+			throw new IllegalArgumentException("Either arg0 or a json string with arguments should be submitted");
+		}
+		
 		Service.get().addJob(job);
 		
 		return "[]";

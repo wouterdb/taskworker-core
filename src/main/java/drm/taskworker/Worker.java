@@ -145,6 +145,7 @@ public abstract class Worker implements Runnable {
 						trace("DONE", task);
 						List<Task> tasks = result.getNextTasks();
 						// is this is a split, do the split
+						logger.info(String.format("Worker spawned %d new tasks.", tasks.size()));
 						if (tasks.size() > 1) {
 							// allocate a new uuid that will become the 
 							// taskid of the joined task

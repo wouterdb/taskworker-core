@@ -117,7 +117,9 @@ public abstract class Worker implements Runnable {
 					TaskResult result = null;
 					task.setStartedAt();
 					try {
+						Context tcWorkMethod = Metrics.timer("worker.work_method." + this.name).time();
 						result = this.work((Task) task);
+						tcWorkMethod.stop();
 					} catch (Exception e) {
 						result = new TaskResult();
 						

@@ -22,6 +22,10 @@ package drm.taskworker.tasks;
 import static drm.taskworker.Entities.cs;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 import com.netflix.astyanax.connectionpool.OperationResult;
@@ -134,6 +138,25 @@ public class ValueRef implements Serializable {
 	 */
 	public void setValue(Object val) {
 		this.value = val;
+	}
+
+	public void flatten() throws ParameterFoundException {
+		value = getValue();
+		
+		if(value instanceof Collection){
+			Collection c = (Collection) value;
+			List newvalue = new LinkedList<>();
+			value = newvalue;
+			for(Object o:c){
+				if(o instanceof ValueRef){
+					ValueRef child = (ValueRef)o;
+					child.flatten();
+					newvalue.add(child.getValue());
+				}else
+					newvalue.add(o);
+			}
+		}
+		
 	}
 	
 }

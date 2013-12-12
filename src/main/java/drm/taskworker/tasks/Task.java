@@ -252,6 +252,17 @@ public class Task {
 			e.printStackTrace();
 		}
 	}
+	
+	/**
+	 * workaround for saving params if some work has been done in RAM
+	 * @throws ParameterFoundException 
+	 */
+	public void flattenParams() throws ParameterFoundException {
+		for(ValueRef vr:params.values()){
+			vr.flatten();
+		}
+		
+	}
 
 	public static void saveParent(UUID jobId, UUID taskId, UUID parentId) {
 		try {
@@ -540,4 +551,6 @@ public class Task {
 	public void initJoin() {
 		this.addParam(JOIN_PARAM, "");
 	}
+
+	
 }

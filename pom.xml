@@ -104,21 +104,6 @@
 			<version>4.2.4</version>
 		</dependency>
 		
-        <dependency>
-            <groupId>com.codahale.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>3.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.codahale.metrics</groupId>
-            <artifactId>metrics-jvm</artifactId>
-            <version>3.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.codahale.metrics</groupId>
-            <artifactId>metrics-graphite</artifactId>
-            <version>3.0.1</version>
-        </dependency>
 
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
@@ -157,7 +142,12 @@
             <groupId>com.google.code.gson</groupId>                                                     
             <artifactId>gson</artifactId>                                                                                                                                                
             <version>2.2.2</version>                                                                    
-        </dependency>   
+        </dependency>
+        <dependency>
+        	<groupId>dnet.monitor.flens</groupId>
+        	<artifactId>minimetrics</artifactId>
+        	<version>0.0.1-SNAPSHOT</version>
+        </dependency>
 	</dependencies>
 
 	<build>

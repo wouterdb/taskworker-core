@@ -1,0 +1,14 @@
+{
+	"filter":{
+		"json-encoder" : {
+ 			"add-tag" : ["json"],
+ 			"field" : "json" 
+ 		} 
+	},
+	"output":{
+		"socket-out":{
+		 	"tags":["json"],
+			"field" : "json"
+		}
+	}
+}

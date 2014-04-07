@@ -19,89 +19,13 @@
  */
 package drm.taskworker.monitoring;
 
-import static drm.taskworker.config.Config.cfg;
-
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryPoolMXBean;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.management.MBeanServer;
-
-import com.codahale.metrics.ConsoleReporter;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.graphite.Graphite;
-import com.codahale.metrics.graphite.GraphiteReporter;
-import com.codahale.metrics.jvm.BufferPoolMetricSet;
-import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
-import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import dnet.minimetrics.MiniMetrics;
+import dnet.minimetrics.Timer;
 
 public class Metrics {
 
-	private static MetricRegistry registery;
-
-	private static Logger logger = Logger.getLogger(Metrics.class.getName());
-
-	static synchronized void init() {
-		if (registery != null) {
-			return;
-		}
-		
-		try {
-			registery = new MetricRegistry();
-			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-
-			registery.registerAll(new BufferPoolMetricSet(mbs));
-			registery.register("gc", new GarbageCollectorMetricSet());
-			registery.register("jvm.memory",
-					new MemoryUsageGaugeSet(ManagementFactory.getMemoryMXBean(), Collections.<MemoryPoolMXBean> emptyList()));
-
-			if (cfg().getProperty("taskworker.metrics.console", false)) {
-				ConsoleReporter.forRegistry(registery).build().start(cfg().getProperty("taskworker.metrics.console.interval", 30), TimeUnit.SECONDS);
-			}
-			
-			if (cfg().getProperty("taskworker.metrics.graphite", false)) {
-				final Graphite graphite = new Graphite(new InetSocketAddress(
-						cfg().getProperty("taskworker.metrics.graphite.host", "localhost"), 
-						Integer.parseInt(cfg().getProperty("taskworker.metrics.graphite.port", "2003"))));
-				
-				final GraphiteReporter reporter = GraphiteReporter
-						.forRegistry(registery).prefixedWith(cfg().getProperty("taskworker.metrics.graphite.prefix", "localhost"))
-						.convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS)
-						.filter(MetricFilter.ALL).build(graphite);
-				
-				reporter.start(cfg().getProperty("taskworker.metrics.graphite.interval", 30), TimeUnit.SECONDS);
-				logger.info("Started metrics graphite reporter");
-			}
-		} catch (RuntimeException e) {
-			logger.log(Level.SEVERE, "metrics failed to load", e);
-			throw e;
-		}
-
-	}
-
-	/**
-	 * naming:
-	 * 
-	 * [type].[typeInstance|*].[temporalScope|*].[metric].[submetric]
-	 * 
-	 * @return
-	 */
-	private static MetricRegistry getRegistry() {
-		if (registery == null) {
-			init();
-		}
-
-		return registery;
-	}
-
 	public static Timer timer(String name) {
-		return getRegistry().timer(name);
+		return MiniMetrics.get().getTimer(name);
 	}
 
 }

@@ -24,7 +24,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.codahale.metrics.Timer.Context;
+import dnet.minimetrics.TimerContext;
 
 import drm.taskworker.monitoring.Metrics;
 import drm.taskworker.tasks.Task;
@@ -103,13 +103,13 @@ public abstract class Worker implements Runnable {
 
 		while (this.working) {
 			try {
-				Context tcLease = Metrics.timer("worker.lease").time();
-				Context tcNoLease = Metrics.timer("worker.nolease").time();
+				TimerContext tcLease = Metrics.timer("worker.lease").time();
+				TimerContext tcNoLease = Metrics.timer("worker.nolease").time();
 				Task task = svc.getTask(this.name);
 				
 				if (task != null) {
 					tcLease.stop();
-					Context tc = Metrics.timer("worker.work." + this.name).time();
+					TimerContext tc = Metrics.timer("worker.work." + this.name).time();
 
 					trace("FETCHED",task);
 
@@ -117,7 +117,7 @@ public abstract class Worker implements Runnable {
 					TaskResult result = null;
 					task.setStartedAt();
 					try {
-						Context tcWorkMethod = Metrics.timer("worker.work_method." + this.name).time();
+						TimerContext tcWorkMethod = Metrics.timer("worker.work_method." + this.name).time();
 						result = this.work((Task) task);
 						tcWorkMethod.stop();
 					} catch (Exception e) {

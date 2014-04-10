@@ -1,6 +1,6 @@
 Name:           taskworker-core
-Version:        0.4.4
-Release:        2%{?dist}
+Version:        0.4.5
+Release:        1%{?dist}
 Summary:        Taskworker middleware platform 
 
 License:        Apache 2.0 

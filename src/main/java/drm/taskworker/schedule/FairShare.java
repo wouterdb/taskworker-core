@@ -34,29 +34,38 @@ import drm.taskworker.tasks.JobStateListener;
  * @author wouter
  * 
  * 
- *  fixme: preload list of open worklows after restart
+ *         FIXME: locking!
+ *         
+ *         
  */
 @SuppressWarnings("rawtypes")
 public class FairShare implements IScheduler, JobStateListener {
 
 	private List<String> workers;
-	private List<String> jobs = new LinkedList<>();
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void enable(Map config) {
-		List<String> workers = (List<String>) config.get("workers");
-		if (workers == null) {
-			workers = new ArrayList<>(Config.getConfig().getWorkers().keySet());
-		}
+		
 
-		this.workers = workers;
+		this.workers = getWorkers();
 		Service.get().addWorkflowStateListener(this);
+	}
 
+	@Override
+	public synchronized void jobStarted(Job job) {
+		List<String> jobs = recoverJobs();
+
+		jobs.add(job.getJobId().toString());
+		rebuild(jobs);
+	}
+
+	private static List<String> recoverJobs() {
+		List<String> jobs = new LinkedList<>();
 		// attempt to recover old data
 		WeightedRoundRobin old = null;
 
-		for (String w : workers) {
+		for (String w : getWorkers()) {
 			old = Service.get().getPriorities(w);
 			if (old != null) {
 				break;
@@ -66,32 +75,42 @@ public class FairShare implements IScheduler, JobStateListener {
 		if (old != null) {
 			jobs.addAll(Arrays.asList(old.getNames()));
 		}
-		rebuild();
+		
+		return jobs;
 	}
 
-	@Override
-	public synchronized void jobStarted(Job job) {
-		jobs.add(job.getJobId().toString());
-		rebuild();
-	}
-
-	@Override
-	public synchronized void jobFinished(Job job) {
+	
+	
+	public static void removejob(Job job) {
+		List<String> jobs = recoverJobs();
 		jobs.remove(job.getJobId().toString());
-		Service.get().removeJobPriority(job, workers);
-		rebuild();
+		Service.get().removeJobPriority(job, getWorkers());
+		rebuild(jobs);
 	}
 
-	private void rebuild() {
+	private static void rebuild(List<String> jobs) {
 		float[] weights = new float[jobs.size()];
 		Arrays.fill(weights, 1.0f);
 
 		WeightedRoundRobin wrr = new WeightedRoundRobin(
 				jobs.toArray(new String[jobs.size()]), weights);
-		
-		for (String worker : workers) {
+
+		for (String worker : getWorkers()) {
 			Service.get().setPriorities(worker, wrr);
 		}
+	}
+
+	private static List<String> getWorkers() {
+		List<String> workers = (List<String>) Config.cfg().getScheduler().getArguments().get("workers");
+		if (workers == null) {
+			workers = new ArrayList<>(Config.getConfig().getWorkers().keySet());
+		}
+		return workers;
+	}
+
+	@Override
+	public void jobFinished(Job job) {
+		removejob(job);		
 	}
 
 }

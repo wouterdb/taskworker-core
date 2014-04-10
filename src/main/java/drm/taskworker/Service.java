@@ -20,6 +20,7 @@
 package drm.taskworker;
 
 import static drm.taskworker.Entities.cs;
+import static drm.taskworker.config.Config.cfg;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -40,6 +41,8 @@ import com.netflix.astyanax.model.Rows;
 import drm.taskworker.config.WorkflowConfig;
 import drm.taskworker.queue.Queue;
 import drm.taskworker.queue.TaskHandle;
+import drm.taskworker.schedule.FairShare;
+import drm.taskworker.schedule.IScheduler;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.JobStateListener;
 import drm.taskworker.tasks.Task;
@@ -59,6 +62,7 @@ public class Service {
 	private Map<String, Long> timeout = new HashMap<>();
 	
 	private Map<UUID,WorkflowConfig> wfConfig = new HashMap<>();
+	
 
 	/**
 	 * Get an instance of the service
@@ -219,6 +223,8 @@ public class Service {
 		job.setFinishedAt(new Date());
 		job.calcStats();
 
+		FairShare.removejob(job);
+		
 		synchronized (listeners) {
 			for (JobStateListener wfsl : listeners) {
 				wfsl.jobFinished(job);

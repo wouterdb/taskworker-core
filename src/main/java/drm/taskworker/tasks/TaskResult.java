@@ -34,6 +34,9 @@ public class TaskResult {
 	private List<Task> tasks = null;
 	private Exception exception = null;
 	private boolean fail = false;
+	private boolean split = false;
+
+	
 
 	/**
 	 * Initialize a new taskresult
@@ -70,14 +73,10 @@ public class TaskResult {
 	 */
 	public void addNextTask(Task task) {
 		this.tasks.add(task);
+		if(this.tasks.size()>1)
+			setSplit();
 	}
 	
-	/**
-	 * Does this task fork the workflow?
-	 */
-	public boolean isFork() {
-		return this.tasks.size() > 1;
-	}
 	
 	/**
 	 * Get a list of all the next tasks
@@ -94,9 +93,12 @@ public class TaskResult {
 	 * @return
 	 */
 	public boolean isSplit() {
-		return this.tasks.size() > 0;
+		return split;
 	}
-
+	
+	public void setSplit() {
+		this.split = true;
+	}
 	/**
 	 * @return the exception
 	 */

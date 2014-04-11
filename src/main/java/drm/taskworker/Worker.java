@@ -140,7 +140,7 @@ public abstract class Worker implements Runnable {
 					// process the result
 					if (result.getResult() == TaskResult.Result.FINISHED) {
 						svc.jobFinished(task.getJob());
-						
+						svc.deleteTask(task);
 					} else if (result.getResult() == TaskResult.Result.SUCCESS) {
 						trace("DONE", task);
 						List<Task> tasks = result.getNextTasks();

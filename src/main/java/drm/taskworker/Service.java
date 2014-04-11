@@ -155,7 +155,7 @@ public class Service {
 	public Task getTask(UUID workflowId, String workerType) {
 		List<TaskHandle> tasks;
 		try {
-			tasks = queue.leaseTasks(15, TimeUnit.SECONDS, 1, workerType, workflowId);
+			tasks = queue.leaseTasks(1000, TimeUnit.SECONDS, 1, workerType, workflowId);
 
 			// do work!
 			if (!tasks.isEmpty()) {

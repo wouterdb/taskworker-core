@@ -58,6 +58,38 @@ public class CLeaner {
 		context.start();
 		Keyspace ks = context.getEntity();
 
+		clearPrios(ks);
+		clearQueue(ks);
+		
+	}
+
+
+
+
+	private void clearQueue(Keyspace ks) throws ConnectionException {
+		OperationResult<CqlResult<String, String>> queue = ks.prepareQuery(CF_STANDARD1)
+		.withCql("select * from task_queue;").execute();
+		
+		
+		for(Row<String,String> row:queue.getResult().getRows()){
+			boolean removed = row.getColumns().getBooleanValue("removed", false);
+			if(removed){
+				String queue_id = row.getColumns().getStringValue("queue_id", "");
+				UUID uuid = row.getColumns().getUUIDValue("id", null);
+				System.out.println("stale queue item: " + queue_id +" " + uuid);
+				ks.prepareQuery(CF_STANDARD1)
+						.withCql("delete from task_queue where queue_id=? and id=?;").asPreparedStatement().withStringValue(queue_id).withUUIDValue(uuid).execute();
+			}
+				
+			
+		}
+		
+	}
+
+
+
+
+	private void clearPrios(Keyspace ks) throws ConnectionException {
 		OperationResult<CqlResult<String, String>> jobs = ks.prepareQuery(CF_STANDARD1)
 		.withCql("select job_id from job where finished = true;").execute();
 	
@@ -71,7 +103,6 @@ public class CLeaner {
 				.withCql("delete from priorities where worker_type=? and job_id=?;").asPreparedStatement().withStringValue(worker).withUUIDValue(uuid).execute();
 			}
 		}
-		
 	}
 
 

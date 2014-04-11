@@ -22,6 +22,7 @@ package drm.taskworker;
 import static drm.taskworker.Entities.cs;
 import static drm.taskworker.config.Config.cfg;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -223,7 +224,7 @@ public class Service {
 		job.setFinishedAt(new Date());
 		job.calcStats();
 
-		FairShare.removejob(job);
+		removeJobPriority(job,job.getWorkflowConfig().getSteps().keySet());
 		
 		synchronized (listeners) {
 			for (JobStateListener wfsl : listeners) {
@@ -235,7 +236,7 @@ public class Service {
 	/**
 	 * Remove a job from the priorities table
 	 */
-	public void removeJobPriority(Job job, List<String> workers) {
+	public void removeJobPriority(Job job, Collection<String> workers) {
 		try {
 			for(String worker : workers) {
 				cs().prepareQuery(Entities.CF_STANDARD1)

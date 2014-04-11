@@ -362,7 +362,8 @@ public class Job {
 	 */
 	public void setFinishedAt(Date finishedAt) {
 		if (this.finishedAt != null) {
-			throw new IllegalAccessError(this.finishedAt.toString());
+			logger.log(Level.SEVERE, "job ended more the once, can mean lock violation");
+			return;
 		}
 		
 		this.finishedAt = finishedAt;

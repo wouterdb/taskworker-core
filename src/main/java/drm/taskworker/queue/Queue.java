@@ -201,6 +201,15 @@ public class Queue {
 					.withUUIDValue(task.getId())
 					.execute().getResult();
 			
+			PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("DELETE FROM task_queue WHERE queue_id = ? AND id = ?")
+					.asPreparedStatement();
+			
+			deleteTask
+					.withStringValue(this.lockName(task.getWorkerName(), task.getJobID()))
+					.withUUIDValue(task.getId())
+					.execute().getResult();
+			
 			return false;
 		} else {
 			// this is a real expired

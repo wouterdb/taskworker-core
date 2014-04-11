@@ -223,8 +223,12 @@ public class Service {
 
 		job.setFinishedAt(new Date());
 		job.calcStats();
+		
+		Collection<String> workers = job.getWorkflowConfig().getSteps().keySet();
 
-		removeJobPriority(job,job.getWorkflowConfig().getSteps().keySet());
+		removeJobPriority(job,workers);
+		removeStaleQueueItems(job,workers);
+		
 		
 		synchronized (listeners) {
 			for (JobStateListener wfsl : listeners) {
@@ -233,6 +237,30 @@ public class Service {
 		}
 	}
 	
+	private void removeStaleQueueItems(Job job, Collection<String> workers) {
+		try {
+			for(String worker : workers) {
+				int stales = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM task_queue WHERE queue_id = ?")
+				.asPreparedStatement()
+				.withStringValue(worker+"-"+job.getJobId().toString())
+				.execute().getResult().getRows().size();
+				
+				
+				logger.severe("Stale items in the queue " +worker+"-"+job.getJobId().toString() + " " + stales);
+
+				
+				cs().prepareQuery(Entities.CF_STANDARD1)
+						.withCql("DELETE FROM task_queue WHERE queue_id = ?")
+						.asPreparedStatement()
+						.withStringValue(worker+"-"+job.getJobId().toString())
+						.execute();
+			}
+		} catch (ConnectionException e) {
+			logger.severe("Unable to remove priorities from table for job " + job.getJobId());
+		}		
+	}
+
 	/**
 	 * Remove a job from the priorities table
 	 */

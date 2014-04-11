@@ -255,7 +255,11 @@ public class Queue {
 
 			// add all work tasks that do not have a lease on them
 			if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
-				// ignore, strange cassandra crap going on
+				
+				UUID taskid = c.getUUIDValue("id", null);
+				
+				removeFromQueue(taskType, workflowId, taskid);
+				
 			} else {
 				long leased_until = c.getLongValue("leased_until", 0L);
 
@@ -298,6 +302,18 @@ public class Queue {
 		}
 		
 		return handles;
+	}
+
+	private void removeFromQueue(String taskType, UUID workflowId, UUID taskid)
+			throws ConnectionException {
+		PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1)
+				.withCql("DELETE FROM task_queue WHERE queue_id = ? AND id = ?")
+				.asPreparedStatement();
+		
+		deleteTask
+				.withStringValue(this.lockName(taskType, workflowId))
+				.withUUIDValue(taskid)
+				.execute().getResult();
 	}
 
 	/**
